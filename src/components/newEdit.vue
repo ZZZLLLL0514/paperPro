@@ -9,7 +9,7 @@
         ref="newAddForm"
         inline
         size="mini"
-        :rules="rules"
+        :rules="drawerTitle == '摊贩信息面板' ? legalrRules : WFRules"
         label-width="80px"
         :model="newAddForm"
       >
@@ -101,11 +101,20 @@ export default {
     gridData: Array,
     filterPois: Array,
     isFilter: Boolean,
+    drawerTitle: String,
   },
   inject: ["typeList"],
   data() {
     return {
-      rules: {
+      legalRules: {
+        type: [{ required: true, message: "请输入类型", trigger: "change" }],
+        name: [{ required: true, message: "请输入姓名", trigger: "blur" }],
+        date: [{ required: true, message: "请输入日期", trigger: "change" }],
+        id: [{ required: true, message: "请输入id", trigger: "blur" }],
+        addr: [{ required: true, message: "请输入地址", trigger: "blur" }],
+        lngLat: [{ required: true, message: "请输入经纬度", trigger: "blur" }],
+      },
+      WFRules: {
         type: [{ required: true, message: "请输入类型", trigger: "change" }],
         name: [{ required: true, message: "请输入姓名", trigger: "blur" }],
         date: [{ required: true, message: "请输入日期", trigger: "change" }],
@@ -177,6 +186,43 @@ export default {
           this.newAddForm.date.getDate();
       this.pickMap = null;
     },
+    againSetSource() {
+      let sourceUrl;
+      switch (this.drawerTitle) {
+        case "摊贩信息面板":
+          sourceUrl = `/poi/getFeatures`;
+          break;
+        case "违规摊贩信息":
+          sourceUrl = `/poi/violate/getFeatures`;
+          break;
+        case "城管信息面板":
+          sourceUrl = `/poi/urban/getFeatures`;
+          break;
+        case "部门信息面板":
+          sourceUrl = `/poi/departmentInfo/getFeatures`;
+          break;
+      }
+      $axios.get(sourceUrl).then((res) => {
+        res.data.map((item) => {
+          delete item._id;
+          delete item.__v;
+        });
+        this.totalPoi = res.data.length;
+        let sourceID;
+        switch (this.drawerTitle) {
+          case "摊贩信息面板":
+            sourceID = "vendorPois";
+            break;
+          case "违规摊贩信息":
+            sourceID = "violaterPois";
+            break;
+        }
+        map.getSource(sourceID).setData({
+          type: "FeatureCollection",
+          features: res.data,
+        });
+      });
+    },
     submitpoi(formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
@@ -230,7 +276,12 @@ export default {
                     gridData: propertiesArr,
                   });
                 });
-
+                if (
+                  this.drawerTitle == "违规摊贩信息" ||
+                  this.drawerTitle == "摊贩信息面板"
+                ) {
+                  this.againSetSource();
+                }
                 this.$message({
                   message: "添加成功",
                   type: "success",

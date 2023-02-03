@@ -185,6 +185,7 @@
       :newAddForm="newAddForm"
       @updateTable="updatetable"
       @updateForm="updateform"
+      :drawerTitle="drawerTitle"
     >
     </new-edit>
     <div v-show="isShow" id="coorContainer" class="coorContainer"></div>
@@ -194,11 +195,11 @@
 <script>
 import { operateMap } from "@/mixins/operateMap";
 import { addLayer } from "@/mixins/addLayer";
-import{topBarOperate} from "@/mixins/topBarOperate"
+import { topBarOperate } from "@/mixins/topBarOperate";
 import newEdit from "./newEdit.vue";
 export default {
   name: "Map",
-  mixins: [operateMap, addLayer,topBarOperate],
+  mixins: [operateMap, addLayer, topBarOperate],
   components: { newEdit },
   props: {
     drawerVisible: {
@@ -219,7 +220,6 @@ export default {
   inject: ["typeList"],
   data() {
     return {
-    
       gridData: [],
       map: null, //实例地图
       pickMap: null,
@@ -251,7 +251,7 @@ export default {
           title: "缓冲区分析 ",
           name: "buff",
         },
-      ]
+      ],
     };
   },
   mounted() {
@@ -322,6 +322,20 @@ export default {
                 message: "删除成功",
                 type: "success",
               });
+              let sourceID;
+              switch (this.drawerTitle) {
+                case "摊贩信息面板":
+                  sourceID = "vendorPois";
+                  break;
+                case "违规摊贩信息":
+                  sourceID = "violaterPois";
+                  break;
+              }
+              map.getSource(sourceID).setData({
+                type: "FeatureCollection",
+                features: res.data,
+              });
+              this.totalPoi = this.filterPois.length;
               this.$nextTick(() => {
                 this.loading = false;
               });
@@ -338,6 +352,7 @@ export default {
     viewPoiClick(row) {
       this.viewPopup?.remove();
       this.$emit("update:drawerVisible", false);
+      console.log("查看", row);
       this.map.flyTo({
         center: [row.lngLat[0], row.lngLat[1]],
         zoom: 17.3,
@@ -471,12 +486,24 @@ export default {
                   message: "删除成功",
                   type: "success",
                 });
+                let sourceID;
+                switch (this.drawerTitle) {
+                  case "摊贩信息面板":
+                    sourceID = "vendorPois";
+                    break;
+                  case "违规摊贩信息":
+                    sourceID = "violaterPois";
+                    break;
+                }
+                map.getSource(sourceID).setData({
+                  type: "FeatureCollection",
+                  features: res.data,
+                });
                 this.$nextTick(() => {
                   this.loading = false;
                 });
               }
             });
-            t;
           })
           .catch(() => {
             this.$message({
@@ -659,6 +686,7 @@ export default {
             delete item.__v;
           });
           let sourceID;
+          this.totalPoi = res.data.length;
           switch (this.drawerTitle) {
             case "摊贩信息面板":
               sourceID = "vendorPois";
@@ -688,7 +716,6 @@ export default {
         }
         $axios.get(url).then((respois) => {
           let propertiesArr = [];
-          this.totalPoi = respois.data.totalPoi;
           respois.data.allData.forEach((item) => {
             item.properties.lngLat = item.geometry.coordinates;
             item.properties._id = item._id;
@@ -726,6 +753,7 @@ export default {
             break;
           case "城管信息面板":
             url = `/poi/urban/pagequery/${this.currentPage}`;
+            break;
           case "部门信息面板":
             url = `/poi/departmentInfo/pagequery/${this.currentPage}`;
             break;
@@ -784,142 +812,6 @@ export default {
       map.setLayoutProperty("violateCluster-count", "visibility", "visible");
       map.setLayoutProperty("violateIcon", "visibility", "visible");
     },
-    // topBarClick(index) {
-    //   let active = this.topoperateArray[index].active;
-    //   if (active) {
-    //     this.topoperateArray[index].active = false;
-    //     this.map.removeControl(this.draw);
-    //     this.draw = null;
-    //     if (index == 0) {
-    //       if (this.map.getLayer("queryPoi")) {
-    //         this.map.removeLayer("queryPoi");
-    //         this.map.removeSource("queryPoi");
-    //       }
-    //       this.map.off("draw.create", this.updateDraw);
-    //       this.map.off("draw.delete", this.updateDraw);
-    //       this.map.off("draw.update", this.updateDraw);
-    //       this.ZBdrawerVisible = false;
-    //     }
-    //   } else {
-    //     if (this.topoperateArray[1].active) {
-    //       this.map.off("draw.create", this.updateDraw);
-    //       this.map.off("draw.delete", this.updateDraw);
-    //       this.map.off("draw.update", this.updateDraw);
-    //       this.map.removeControl(this.draw);
-    //       this.draw = null;
-    //     }
-    //     this.topoperateArray.forEach((item, ind) => {
-    //       if (ind == index) {
-    //         item.active = true;
-    //       } else item.active = false;
-    //     });
-    //     switch (index) {
-    //       case 0:
-    //         this.ZBdrawerVisible = true;
-    //         this.draw = new MapboxDraw({
-    //           displayControlsDefault: false,
-    //           // // Select which mapbox-gl-draw control buttons to add to the map.
-    //           controls: {
-    //             polygon: true,
-    //             trash: true,
-    //           },
-    //         });
-    //         this.map.addControl(this.draw);
-    //         this.topoperateArray[index].active = true;
-    //         this.map.on("draw.create", this.updateDraw);
-    //         this.map.on("draw.delete", this.updateDraw);
-    //         this.map.on("draw.update", this.updateDraw);
-    //         break;
-    //       case 1:
-    //         this.ZBdrawerVisible = false;
-    //         this.topoperateArray[index].active = true;
-    //         if (this.draw) {
-    //           this.map.removeControl(this.draw);
-    //           this.map.off("draw.create", this.updateDraw);
-    //           this.map.off("draw.delete", this.updateDraw);
-    //           this.map.off("draw.update", this.updateDraw);
-    //           this.draw = null;
-    //         }
-    //         this.draw = new MapboxDraw({
-    //           displayControlsDefault: false, //关闭，默认绘制类型
-    //           // // Select which mapbox-gl-draw control buttons to add to the map.
-    //           controls: {
-    //             polygon: true,
-    //             trash: true,
-    //             line_string: true,
-    //             point: true,
-    //           },
-    //         });
-    //         this.map.addControl(this.draw);
-    //         break;
-    //     }
-    //   }
-    // },
-    // async updateDraw(e) {
-    //   const data = this.draw.getAll();
-    //   console.log("绘制结果", data.features);
-    //   console.log("e", e);
-    //   let features = [];
-    //   if (e.type == "draw.update") {
-    //     //如果编辑要素则移除再创建
-    //     this.map.removeLayer("queryPoi");
-    //     this.map.removeSource("queryPoi");
-    //   }
-    //   if (data.features.length > 0) {
-    //     for (let i = 0; i < this.$store.state.legalPois.length; i++) {
-    //       // if (this.$store.state.legalPois[i].geometry.coordinates.length == 2) {
-    //       let coordinates = [
-    //         Number(this.$store.state.legalPois[i].geometry.coordinates[0]),
-    //         Number(this.$store.state.legalPois[i].geometry.coordinates[1]),
-    //       ];
-    //       let isInclude = await turf.booleanPointInPolygon(
-    //         turf.point(coordinates),
-    //         // turf.polygon(e.features[0].geometry.coordinates)
-    //         data.features[0]
-    //       );
-    //       if (isInclude) {
-    //         features.push({
-    //           type: "Feature",
-    //           geometry: {
-    //             type: "Point",
-    //             coordinates,
-    //           },
-    //         });
-    //       }
-    //       // }
-    //     }
-    //     this.map.addSource("queryPoi", {
-    //       type: "geojson",
-    //       data: {
-    //         type: "FeatureCollection",
-    //         crs: {
-    //           type: "name",
-    //           properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
-    //         },
-    //         features,
-    //       },
-    //     });
-    //     this.map.addLayer({
-    //       id: "queryPoi",
-    //       type: "circle",
-    //       source: "queryPoi",
-    //       paint: {
-    //         //对这图层的每个要素设置颜色，而不是整体赋予
-    //         "circle-color": "#f28cb1",
-    //         "circle-radius": 10,
-    //       },
-    //     });
-    //   } else {
-    //     this.map.removeLayer("queryPoi");
-    //     this.map.removeSource("queryPoi");
-    //   }
-    // },
-    // exportMap() {
-    //   this.href = map.getCanvas().toDataURL("image/png");
-    // },
-    // ZBvendorClose() {
-    //   this.ZBdrawerVisible = false;
-    // },
   },
 };
 </script>

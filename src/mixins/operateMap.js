@@ -170,32 +170,32 @@ export const operateMap = {
     },
     pickClick(e) {//点击拾取回调
       if (this.isPick) {
-        this.lnglats.push([e.lngLat.lng, e.lngLat.lat])
-        if (this.lnglats.length > 4) {
-          console.log("够了")
-          $axios({
-            method: "post",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            url: "http://127.0.01:3005/poi/test",
-            // 只有params是可以传递参数的,未在express中引入bodyParser之前
-            params: this.lnglats,
-          }).then((res) => {
-            console.log(res.data)
-          })
-        }
-        // var pt = turf.point([e.lngLat.lng, e.lngLat.lat]);
-        // console.log("转墨卡托", turf.toMercator(pt))
-        // let lng = e.lngLat.lng.toString().substring(0, 10);
-        // let lat = e.lngLat.lat.toString().substring(0, 10);
-        // let PickPopup = new mapboxgl.Popup({
-        //   // closeButton: false,//是否显示右上角的取消按钮
-        //   closeOnClick: false,//点击地图不会关闭前一个popup
-        // }).addTo(map);
-        // PickPopup.setLngLat(e.lngLat)
-        //   .setHTML(`<h4>坐标经纬度：${lng} , ${lat}</h4>`)
-        //   .setMaxWidth("350px");
-        // this.PickPopups.push(PickPopup);
-        // PickPopup.on("close", this.closePick);
+        // this.lnglats.push([e.lngLat.lng, e.lngLat.lat])
+        // if (this.lnglats.length > 4) {
+        //   console.log("够了")
+        //   $axios({
+        //     method: "post",
+        //     headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        //     url: "http://127.0.01:3005/poi/test",
+        //     // 只有params是可以传递参数的,未在express中引入bodyParser之前
+        //     params: this.lnglats,
+        //   }).then((res) => {
+        //     console.log(res.data)
+        //   })
+        // }
+        var pt = turf.point([e.lngLat.lng, e.lngLat.lat]);
+        console.log("转墨卡托", turf.toMercator(pt))
+        let lng = e.lngLat.lng.toString().substring(0, 10);
+        let lat = e.lngLat.lat.toString().substring(0, 10);
+        let PickPopup = new mapboxgl.Popup({
+          // closeButton: false,//是否显示右上角的取消按钮
+          closeOnClick: false,//点击地图不会关闭前一个popup
+        }).addTo(map);
+        PickPopup.setLngLat(e.lngLat)
+          .setHTML(`<h4>坐标经纬度：${lng} , ${lat}</h4>`)
+          .setMaxWidth("350px");
+        this.PickPopups.push(PickPopup);
+        PickPopup.on("close", this.closePick);
       }
     },
     closePick() {//关闭拾取回调
