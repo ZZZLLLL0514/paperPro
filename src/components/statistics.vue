@@ -1,6 +1,6 @@
 <template>
   <div class="echarts-main">
-    <el-button size="mini" @click="back">返回</el-button>
+    <el-button style="margin:5px" type="primary" @click="back">返回</el-button>
     <div class="top">
       <div class="amount">
         <div>
@@ -39,6 +39,7 @@ export default {
       hqt = 0, //合法其他
       wx = 0, //维修
       xc = 0, //小吃
+      wg = 0,
       zd = 0, //占道
       ws = 0, //卫生
       sj = 0, //售假
@@ -68,6 +69,8 @@ export default {
         case "蔬菜瓜果":
           ++gg;
           break;
+        case "占道经营":
+          ++wg;
       }
     });
     violatePois.forEach((item) => {
@@ -130,13 +133,38 @@ export default {
             show: false,
           },
           data: [
-            { value:Math.round((xc/legalPois.length*1000))/1000, name: "熟食小吃" },
-            { value:Math.round((wx/legalPois.length*1000))/1000,  name: "缝补维修" },
-            { value:Math.round((rl/legalPois.length*1000))/1000, name: "水产肉类" },
-            { value:Math.round((tp/legalPois.length*1000))/1000, name: "甜品饮料" },
-            { value:Math.round((cw/legalPois.length*1000))/1000,  name: "宠物销售" },
-            { value:Math.round((gg/legalPois.length*1000))/1000,  name: "蔬菜" },
-            { value:Math.round((hqt/legalPois.length*1000))/1000, name: "其他" },
+            {
+              value: Math.round((xc / legalPois.length) * 1000) / 1000,
+              name: "熟食小吃",
+            },
+            {
+              value: Math.round((wx / legalPois.length) * 1000) / 1000,
+              name: "缝补维修",
+            },
+            {
+              value: Math.round((rl / legalPois.length) * 1000) / 1000,
+              name: "水产肉类",
+            },
+            {
+              value: Math.round((tp / legalPois.length) * 1000) / 1000,
+              name: "甜品饮料",
+            },
+            {
+              value: Math.round((cw / legalPois.length) * 1000) / 1000,
+              name: "宠物销售",
+            },
+            {
+              value: Math.round((gg / legalPois.length) * 1000) / 1000,
+              name: "瓜果蔬菜",
+            },
+            {
+              value: Math.round((wg / legalPois.length) * 1000) / 1000,
+              name: "占道经营",
+            },
+            {
+              value: Math.round((hqt / legalPois.length) * 1000) / 1000,
+              name: "其他",
+            },
           ],
         },
       ],
@@ -163,14 +191,15 @@ export default {
         {
           type: "category",
           data: [
-              "熟食小吃",
-              "缝补维修",
-              "水产肉类",
-              "甜品饮料",
-              "宠物销售",
-              "蔬菜瓜果",
-              "其他",
-            ],
+            "熟食小吃",
+            "缝补维修",
+            "水产肉类",
+            "甜品饮料",
+            "宠物销售",
+            "蔬菜瓜果",
+            "占道经营",
+            "其他",
+          ],
           axisTick: {
             alignWithLabel: true,
           },
@@ -186,7 +215,7 @@ export default {
           name: "数量",
           type: "bar",
           barWidth: "60%",
-          data: [xc, wx, rl, tp, cw, gg, hqt],
+          data: [xc, wx, rl, tp, cw, gg, wg,hqt],
         },
       ],
     };
@@ -229,12 +258,30 @@ export default {
             show: false,
           },
           data: [
-            { value:Math.round((ws/violatePois.length*1000))/1000, name: "卫生问题" },
-            { value:Math.round((zd/violatePois.length*1000))/1000,  name: "违规占道" },
-            { value:Math.round((sj/violatePois.length*1000))/1000, name: "制假售假" },
-            { value:Math.round((rm/violatePois.length*1000))/1000, name: "叫卖扰民" },
-            { value:Math.round((dj/violatePois.length*1000))/1000,  name: "不合理定价" },
-            { value:Math.round((wqt/violatePois.length*1000))/1000, name: "其他" },
+            {
+              value: Math.round((ws / violatePois.length) * 1000) / 1000,
+              name: "卫生问题",
+            },
+            {
+              value: Math.round((zd / violatePois.length) * 1000) / 1000,
+              name: "违规占道",
+            },
+            {
+              value: Math.round((sj / violatePois.length) * 1000) / 1000,
+              name: "制假售假",
+            },
+            {
+              value: Math.round((rm / violatePois.length) * 1000) / 1000,
+              name: "叫卖扰民",
+            },
+            {
+              value: Math.round((dj / violatePois.length) * 1000) / 1000,
+              name: "不合理定价",
+            },
+            {
+              value: Math.round((wqt / violatePois.length) * 1000) / 1000,
+              name: "其他",
+            },
           ],
         },
       ],

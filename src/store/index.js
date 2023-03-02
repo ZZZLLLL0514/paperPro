@@ -9,8 +9,9 @@ export default new Vuex.Store({
     state: {
         violatePois: [],
         legalPois: [],
-        minTime:0,
-        maxTime:0
+        minTime: 0,
+        maxTime: 0,
+        StudentDormitorySource: null
     },
     mutations: {
         addViolatePois(state, value) {
@@ -24,6 +25,9 @@ export default new Vuex.Store({
         },
         addMinTime(state, value) {
             state.minTime = value;
+        },
+        addStudentDormitorySource(state, value) {
+            state.StudentDormitorySource = value;
         }
     },
 })

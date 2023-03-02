@@ -9,7 +9,7 @@
         ref="newAddForm"
         inline
         size="mini"
-        :rules="drawerTitle == '摊贩信息面板' ? legalrRules : WFRules"
+        :rules="drawerTitle == '摊贩信息面板' ? legalRules : WFRules"
         label-width="80px"
         :model="newAddForm"
       >
@@ -244,6 +244,7 @@ export default {
               date: this.newAddForm.date,
               name: this.newAddForm.name,
               time: d.getTime(), //时间戳
+              hour:d.getHours(),
               addr: this.newAddForm.addr,
             },
             geometry: {

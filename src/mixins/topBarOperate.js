@@ -14,6 +14,10 @@ export const topBarOperate = {
                 this.topoperateArray[index].active = false;
                 this.map.removeControl(this.draw);
                 this.draw = null;
+                if(this.map.getLayer("bufferPoi")){
+                    this.map.removeLayer("bufferPoi");
+                    this.map.removeSource("bufferPoi")
+                }
                 if (index == 0) {
                     if (this.map.getLayer("queryPoi")) {
                         this.map.removeLayer("queryPoi");
@@ -56,6 +60,7 @@ export const topBarOperate = {
                         break;
                     case 1:
                         this.ZBdrawerVisible = false;
+                        this.bufferDialogVisible = true;
                         this.topoperateArray[index].active = true;
                         if (this.draw) {
                             this.map.removeControl(this.draw);
@@ -75,10 +80,12 @@ export const topBarOperate = {
                             },
                         });
                         this.map.addControl(this.draw);
+                        // this.map.on("draw.create", this.mdraw);
                         break;
                 }
             }
-        },
+        }
+        ,
         async updateDraw(e) {
             const data = this.draw.getAll();
             console.log("绘制结果", data.features);
@@ -100,7 +107,7 @@ export const topBarOperate = {
                     let isInclude = await turf.booleanPointInPolygon(
                         turf.point(coordinates),
                         // turf.polygon(e.features[0].geometry.coordinates)
-                        data.features[0]
+                        data.features[data.features.length-1]
                     );
                     if (isInclude) {
                         features.push(this.$store.state.legalPois[i]);
@@ -146,12 +153,7 @@ export const topBarOperate = {
                 hqt = 0, //合法其他
                 wx = 0, //维修
                 xc = 0, //小吃
-                zd = 0, //占道
-                ws = 0, //卫生
-                sj = 0, //售假
-                rm = 0, //扰民
-                dj = 0, //不合理定价
-                wqt = 0; //违法其他
+                wg = 0 //占道
             let tiem_data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             this.features.forEach((item) => {
                 switch (item.properties.type) {
@@ -175,6 +177,9 @@ export const topBarOperate = {
                         break;
                     case "蔬菜瓜果":
                         ++gg;
+                        break;
+                    case "占道经营":
+                        ++wg;
                         break;
                 };
                 let d = new Date(item.properties.time);
@@ -205,7 +210,7 @@ export const topBarOperate = {
             // });
             let legalPropor_option = {
                 title: {
-                    text: "合法摊贩类型数量",
+                    text: "摊贩类型数量",
                     left: "center",
                 },
                 tooltip: {
@@ -217,7 +222,7 @@ export const topBarOperate = {
                 },
                 series: [
                     {
-                        name: "占比",
+                        name: "数量",
                         type: "pie",
                         radius: ["40%", "70%"],
                         avoidLabelOverlap: false,
@@ -247,6 +252,7 @@ export const topBarOperate = {
                             { value: tp, name: "甜品饮料" },
                             { value: cw, name: "宠物销售" },
                             { value: gg, name: "蔬菜瓜果" },
+                            { value: wg, name: "占道经营" },
                             { value: hqt, name: "其他" },
                         ],
                     },
@@ -281,7 +287,7 @@ export const topBarOperate = {
             ];
             let time_option = {
                 title: {
-                    text: "不同时段合法摊贩数量",
+                    text: "不同时段摊贩数量",
                     left: "center",
                 },
                 xAxis: {

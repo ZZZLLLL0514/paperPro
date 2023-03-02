@@ -34,6 +34,15 @@
         >
       </div>
     </div>
+    <el-slider
+      v-show="isHeat"
+      @change="sliderchange"
+      v-model="timeSlider"
+      range
+      show-stops
+      :max="24"
+    >
+    </el-slider>
     <el-button
       @click="cancelHeat"
       v-show="isHeat"
@@ -188,6 +197,39 @@
       :drawerTitle="drawerTitle"
     >
     </new-edit>
+    <el-dialog
+      title="缓存分析"
+      :visible.sync="bufferDialogVisible"
+      width="30%"
+      :before-close="bufferClose"
+    >
+      <el-form
+        ref="bufferForm"
+        :rules="bufferRules"
+        :inline="true"
+        :model="bufferForm"
+        class="demo-form-inline"
+      >
+        <el-form-item prop="layer" label="选择图层">
+          <el-select v-model="bufferForm.layer" placeholder="选择图层">
+            <el-option label="华农学生公寓" value="华农学生公寓"></el-option>
+            <!-- <el-option label="区域二" value="beijing"></el-option> -->
+          </el-select>
+        </el-form-item>
+        <el-form-item prop="distant" label="缓冲距离">
+          <el-input
+            v-model="bufferForm.distant"
+            placeholder="请输入缓冲距离(米)"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="bufferClose">取 消</el-button>
+        <el-button type="primary" @click="submitBuffer('bufferForm')"
+          >确 定</el-button
+        >
+      </span>
+    </el-dialog>
     <div v-show="isShow" id="coorContainer" class="coorContainer"></div>
   </div>
 </template>
@@ -220,7 +262,17 @@ export default {
   inject: ["typeList"],
   data() {
     return {
+      bufferDialogVisible: false, //缓冲区对话框可见性
+      bufferRules: {
+        layer: [{ required: true, message: "请输入类型", trigger: "change" }],
+        distant: [{ required: true, message: "请输入姓名", trigger: "blur" }],
+      },
+      bufferForm: {
+        layer: "",
+        distant: "",
+      },
       gridData: [],
+      timeSlider: [0, 24],
       map: null, //实例地图
       pickMap: null,
       newAddDialogVisible: false, //新增摊贩对话框
@@ -808,9 +860,112 @@ export default {
       map.setLayoutProperty("clusters", "visibility", "visible");
       map.setLayoutProperty("cluster-count", "visibility", "visible");
       map.setLayoutProperty("icon-image", "visibility", "visible");
-      map.setLayoutProperty("violateClusters", "visibility", "visible");
-      map.setLayoutProperty("violateCluster-count", "visibility", "visible");
-      map.setLayoutProperty("violateIcon", "visibility", "visible");
+      // map.setLayoutProperty("violateClusters", "visibility", "visible");
+      // map.setLayoutProperty("violateCluster-count", "visibility", "visible");
+      // map.setLayoutProperty("violateIcon", "visibility", "visible");
+    },
+    sliderchange(val) {
+      console.log("改变的值", val);
+      map.setFilter("vendorPois-heat", [
+        "all",
+        [">=", "hour", val[0]],
+        ["<", "hour", val[1]],
+      ]);
+    },
+    bufferClose() {
+      this.bufferDialogVisible = false;
+      if (!this.map.getLayer("bufferPoi")) {
+        this.topoperateArray[1].active = false;
+        this.map.removeControl(this.draw);
+        this.draw = null;
+      }
+    },
+    submitBuffer(formName) {
+      this.$refs[formName].validate(async (valid) => {
+        if (valid) {
+          if (this.bufferForm.layer == "华农学生公寓") {
+            let buffers = turf.buffer(
+              this.$store.state.StudentDormitorySource,
+              this.bufferForm.distant,
+              { units: "meters" }
+            );
+            // console.log("缓冲源",this.$store.state.StudentDormitorySource)
+            // console.log("缓冲区",buffers)
+            let unionPolygon = null; //缓冲面
+            let bufferPoi = [];
+            if (buffers.features.length >= 3) {
+              let features = buffers.features;
+              for (let i = 0; i < features.length; i++) {
+                if (i == 0) {
+                  continue;
+                } else if (i == 1) {
+                  unionPolygon = turf.union(features[0], features[1]);
+                } else {
+                  unionPolygon = turf.union(unionPolygon, features[i]);
+                }
+              }
+              // console.log("合并后缓冲区",unionPolygon)
+              for (let i = 0; i < this.$store.state.legalPois.length; i++) {
+                // if (this.$store.state.legalPois[i].geometry.coordinates.length == 2) {
+                let coordinates = [
+                  Number(
+                    this.$store.state.legalPois[i].geometry.coordinates[0]
+                  ),
+                  Number(
+                    this.$store.state.legalPois[i].geometry.coordinates[1]
+                  ),
+                ];
+                let isInclude = await turf.booleanPointInPolygon(
+                  turf.point(coordinates),
+                  // turf.polygon(e.features[0].geometry.coordinates)
+                  unionPolygon
+                );
+                if (isInclude) {
+                  bufferPoi.push(this.$store.state.legalPois[i]);
+                }
+                // }
+              }
+              // console.log("缓冲范围内的摊贩点",bufferPoi)
+              this.map.addSource("bufferPoi", {
+                type: "geojson",
+                data: {
+                  type: "FeatureCollection",
+                  crs: {
+                    type: "name",
+                    properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
+                  },
+                  features: bufferPoi,
+                },
+              });
+              this.map.addLayer({
+                id: "bufferPoi",
+                type: "circle",
+                source: "bufferPoi",
+                paint: {
+                  //对这图层的每个要素设置颜色，而不是整体赋予
+                  "circle-color": "#f28cb1",
+                  "circle-radius": 10,
+                },
+              });
+              // this.map.addSource("bufferSource", {
+              //     type: "geojson",
+              //     data: unionPolygon,
+              // });
+              // this.map.addLayer({
+              //     id: "缓冲区",
+              //     type: "fill",
+              //     source: "bufferSource",
+              //     paint: {
+              //         "fill-opacity": 0.6, // 填充的不透明度（可选，取值范围为 0 ~ 1，默认值为 1）
+              //         "fill-color": "#735797", // 填充的颜色（可选，默认值为 #000000。如果设置了 fill-pattern，则 fill-color 将无效）
+              //         "fill-outline-color": "#f50707",
+              //     },
+              // });
+            }
+          }
+          this.bufferDialogVisible = false;
+        }
+      });
     },
   },
 };
@@ -871,6 +1026,13 @@ export default {
     .butnContian {
       padding: 0px 5px 10px;
     }
+  }
+  .el-slider {
+    position: absolute;
+    bottom: 2vh;
+    left: 30%;
+    height: 38px;
+    width: 400px;
   }
 }
 

@@ -67,7 +67,24 @@ export const addLayer = {
                     }
                 );
             });
-            $axios.get("/poi/borederline").then((res) => {//添加华农边界
+            $axios.get("/geoserver/scauBorder/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=scauBorder%3AStudentDormitory&maxFeatures=50&outputFormat=application%2Fjson").then((res=>{
+                this.$store.commit('addStudentDormitorySource', res.data);
+                this.map.addSource("StudentDormitory",{
+                    type:"geojson",
+                    data:res.data
+                });
+                this.map.addLayer({
+                    id: "华农学生公寓",
+                    type: "fill",
+                    source: "StudentDormitory",
+                    paint: {
+                        "fill-opacity": 0.6, // 填充的不透明度（可选，取值范围为 0 ~ 1，默认值为 1）
+                        "fill-color": "#235797", // 填充的颜色（可选，默认值为 #000000。如果设置了 fill-pattern，则 fill-color 将无效）
+                        "fill-outline-color": "#f50707",
+                    },
+                });
+            }))
+            $axios.get("/geoserver/scauBorder/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=scauBorder%3ABorderPolygon&maxFeatures=50&outputFormat=application%2Fjson").then((res) => {//添加华农边界
                 delete res.data._id;
                 delete res.data.__v;
                 this.map.addSource("borederline", {
@@ -151,6 +168,17 @@ export const addLayer = {
                     clusterMaxZoom: 17, // Max zoom to cluster points on
                     clusterRadius: 35, // Radius of each cluster  clustering points (defaults to 50)
                 });
+                this.map.addSource("allVendorPois", {
+                    type: "geojson",
+                    data: {
+                        type: "FeatureCollection",
+                        crs: {
+                            type: "name",
+                            properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
+                        },
+                        features: res.data,
+                    },
+                });
                 map.addLayer({//聚合圆
                     id: "clusters",
                     type: "circle",
@@ -208,6 +236,8 @@ export const addLayer = {
                             "cw",
                             ["==", ["get", "type"], "熟食小吃"],
                             "xc",
+                            ["==", ["get", "type"], "占道经营"],
+                            "wg",
                             "qt",
                         ], // 图标的图片（可选，这里填写在 sprite 雪碧图中图标名称）
                         "icon-size": 0.6, // 图标的大小（可选，值 >= 0，默认值为 1。这里实际上是图标对应的原始图片的大小的缩放比例。值为 1 表示图标大小为原始图片的大小）
@@ -219,6 +249,88 @@ export const addLayer = {
                     //     "circle-stroke-color": "#fff",
                     // },
                 });
+                map.addLayer(//添加热力图
+                    {
+                        id: "vendorPois-heat",
+                        type: "heatmap",
+                        source: "allVendorPois",
+                        maxzoom: 24,
+                        paint: {
+                            // "heatmap-weight": [//热力图的权重,控制该点样式相比标准样式的显眼程度，也就是在整块热力图中贡献多少。根据每个要素mag属性值赋予该要素热力强度,mag值小于0时值为0，0<=mag<6时值在0~1之间线性分布,mag>=6赋予1
+                            //   "interpolate",
+                            //   ["linear"],
+                            //   ["get", "mag"],
+                            //   0,
+                            //   0,
+                            //   6,
+                            //   1,
+                            // ],
+                            "heatmap-weight": 1,
+                            "heatmap-intensity": [//热力图的强度,控制整个热力图的显眼程度,也就是圆的红色中心圆半径和颜色强度。根据缩放级别赋值(同上)
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                0,
+                                0.7,
+                                22,
+                                3,
+                            ],
+                            "heatmap-color": [//热力颜色,根据热力图强度赋值
+                                "interpolate",
+                                ["linear"],
+                                ["heatmap-density"],
+                                0,
+                                "rgba(33,102,172,0)",
+                                0.2,
+                                "rgb(103,169,207)",
+                                0.4,
+                                "rgb(209,229,240)",
+                                0.6,
+                                "rgb(253,219,199)",
+                                0.8,
+                                "rgb(239,138,98)",
+                                1,
+                                "rgb(178,24,43)",
+                            ],
+                            // Adjust the heatmap radius by zoom level
+                            "heatmap-radius": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                0,
+                                2,
+                                19,
+                                20,
+                            ],
+                            // Transition from heatmap to circle layer by zoom level
+                            // "heatmap-opacity": [
+                            //   "interpolate",
+                            //   ["linear"],
+                            //   ["zoom"],
+                            //   7,
+                            //   1,
+                            //   9,
+                            //   0,
+                            // ],
+                        },
+                        "layout": { // 布局类属性
+                            "visibility": "none", // 可见性（可选，可选值为 none、visible，默认值为 visible）
+                        },
+                    },
+                    "waterway-label"
+                );
+                map.addLayer({
+                    id: "allLegalPoiLayer",
+                    type: "circle",
+                    source: "allVendorPois",
+                    paint: {//对这图层的每个要素设置颜色，而不是整体赋予
+                        "circle-color": "#f28cb1",
+                        "circle-radius": 8,
+                    },
+                    layout: { // 布局类属性
+                        "visibility": "none", // 可见性（可选，可选值为 none、visible，默认值为 visible）
+                    },
+                })
                 map.moveLayer("scauBoreder", "clusters")
                 map.on('mouseenter', 'clusters', () => {
                     if (this.isCancel) map.getCanvas().style.cursor = 'pointer';
@@ -230,15 +342,6 @@ export const addLayer = {
                 map.on('mouseenter', 'icon-image', (e) => {
                     if (this.isCancel) map.getCanvas().style.cursor = 'pointer';
                     // console.log("要素属性", map.queryRenderedFeatures(e.point))
-
-                    // this.enterPopup = new mapboxgl.Popup({
-                    //     // closeButton: false,//是否显示右上角的取消按钮
-                    //     closeOnClick: false,//点击地图不会关闭前一个popup
-                    // }).addTo(map);
-                    // this.enterPopup.setLngLat(e.lngLat)
-                    //     .setHTML(`<h4>坐标经纬度：</h4>`)
-                    //     .setMaxWidth("200px");
-
                 });
                 map.on('mouseleave', 'icon-image', () => {
                     if (this.isCancel) map.getCanvas().style.cursor = '';
@@ -251,184 +354,161 @@ export const addLayer = {
                         delete item.__v;
                     });
                     this.$store.commit('addViolatePois', res.data);
-                    this.map.addSource("allPois", {//全部摊贩点,包括违法摊贩
-                        type: "geojson",
-                        data: {
-                            type: "FeatureCollection",
-                            crs: {
-                                type: "name",
-                                properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
-                            },
-                            features: [...this.$store.state.violatePois,...this.$store.state.legalPois],
-                        }
-                    })
-                    map.addLayer(//添加热力图
-                        {
-                            id: "vendorPois-heat",
-                            type: "heatmap",
-                            source: "allPois",
-                            maxzoom: 22,
-                            paint: {
-                                // "heatmap-weight": [//热力图的权重,控制该点样式相比标准样式的显眼程度，也就是在整块热力图中贡献多少。根据每个要素mag属性值赋予该要素热力强度,mag值小于0时值为0，0<=mag<6时值在0~1之间线性分布,mag>=6赋予1
-                                //   "interpolate",
-                                //   ["linear"],
-                                //   ["get", "mag"],
-                                //   0,
-                                //   0,
-                                //   6,
-                                //   1,
-                                // ],
-                                "heatmap-weight": 1,
-                                "heatmap-intensity": [//热力图的强度,控制整个热力图的显眼程度,也就是圆的红色中心圆半径和颜色强度。根据缩放级别赋值(同上)
-                                    "interpolate",
-                                    ["linear"],
-                                    ["zoom"],
-                                    0,
-                                    0.7,
-                                    22,
-                                    3,
-                                ],
-                                "heatmap-color": [//热力颜色,根据热力图强度赋值
-                                    "interpolate",
-                                    ["linear"],
-                                    ["heatmap-density"],
-                                    0,
-                                    "rgba(33,102,172,0)",
-                                    0.2,
-                                    "rgb(103,169,207)",
-                                    0.4,
-                                    "rgb(209,229,240)",
-                                    0.6,
-                                    "rgb(253,219,199)",
-                                    0.8,
-                                    "rgb(239,138,98)",
-                                    1,
-                                    "rgb(178,24,43)",
-                                ],
-                                // Adjust the heatmap radius by zoom level
-                                "heatmap-radius": [
-                                    "interpolate",
-                                    ["linear"],
-                                    ["zoom"],
-                                    0,
-                                    2,
-                                    19,
-                                    20,
-                                ],
-                                // Transition from heatmap to circle layer by zoom level
-                                // "heatmap-opacity": [
-                                //   "interpolate",
-                                //   ["linear"],
-                                //   ["zoom"],
-                                //   7,
-                                //   1,
-                                //   9,
-                                //   0,
-                                // ],
-                            },
-                            "layout": { // 布局类属性
-                                "visibility": "none", // 可见性（可选，可选值为 none、visible，默认值为 visible）
-                            },
-                        },
-                        "waterway-label"
-                    );
-                    map.addLayer({
-                        id: "allLegalPoi",
-                        type: "circle",
-                        source: "allPois",
-                        paint: {//对这图层的每个要素设置颜色，而不是整体赋予
-                            "circle-color": "#f28cb1",
-                            "circle-radius": 8,
-                        },
-                        layout: { // 布局类属性
-                            "visibility": "none", // 可见性（可选，可选值为 none、visible，默认值为 visible）
-                        },
-                    })
-                    this.map.addSource("violaterPois", {
-                        type: "geojson",
-                        data: {
-                            type: "FeatureCollection",
-                            crs: {
-                                type: "name",
-                                properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
-                            },
-                            features: res.data,
-                        },
-                        cluster: true,
-                        clusterMaxZoom: 17, // Max zoom to cluster points on
-                        clusterRadius: 35, // Radius of each cluster  clustering points (defaults to 50)
-                    });
-                    map.addLayer({//聚合圆
-                        id: "violateClusters",
-                        type: "circle",
-                        source: "violaterPois",
-                        filter: ["has", "point_count"],
-                        paint: {//对这图层的每个要素设置颜色，而不是整体赋予
-                            "circle-color": "#cb1c1c",
-                            "circle-radius": [
-                                "step",
-                                ["get", "point_count"],
-                                15,
-                                30,
-                                22,
-                                100,
-                                34,
-                            ],
-                        },
-                    });
-                    map.addLayer({
-                        id: "violateCluster-count",
-                        type: "symbol",
-                        source: "violaterPois",
-                        filter: ["has", "point_count"],
-                        layout: {
-                            "text-field": "{point_count_abbreviated}",
-                            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                            "text-size": 10,
-                        },
-                    });
-                    map.addLayer({//图标图层
-                        id: "violateIcon",
-                        type: "symbol",
-                        source: "violaterPois",
-                        filter: ["!", ["has", "point_count"]],
-                        layout: {
-                            "icon-image": "wg", // 图标的图片（可选，这里填写在 sprite 雪碧图中图标名称）
-                            "icon-size": 0.7, // 图标的大小（可选，值 >= 0，默认值为 1。这里实际上是图标对应的原始图片的大小的缩放比例。值为 1 表示图标大小为原始图片的大小）
-                        },
-                        // paint: {
-                        //     "circle-color": "#11b4da",
-                        //     "circle-radius": 4,
-                        //     "circle-stroke-width": 1,
-                        //     "circle-stroke-color": "#fff",
-                        // },
-                    });
-                    map.on('mouseenter', 'violateClusters', () => {
-                        if (this.isCancel) map.getCanvas().style.cursor = 'pointer';
-                    });
-                    map.on('mouseleave', 'violateClusters', () => {
-
-                        if (this.isCancel) map.getCanvas().style.cursor = '';
-                    });
-                    map.on('mouseenter', 'violateIcon', (e) => {
-                        if (this.isCancel) map.getCanvas().style.cursor = 'pointer';
-                        // console.log("要素属性", map.queryRenderedFeatures(e.point))
-
-                        // this.enterPopup = new mapboxgl.Popup({
-                        //     // closeButton: false,//是否显示右上角的取消按钮
-                        //     closeOnClick: false,//点击地图不会关闭前一个popup
-                        // }).addTo(map);
-                        // this.enterPopup.setLngLat(e.lngLat)
-                        //     .setHTML(`<h4>坐标经纬度：</h4>`)
-                        //     .setMaxWidth("200px");
-
-                    });
-                    map.on('mouseleave', 'violateIcon', () => {
-                        if (this.isCancel) map.getCanvas().style.cursor = '';
-                    });
+                    // this.map.addSource("legalPois", {//全部摊贩点,包括违法摊贩
+                    //     type: "geojson",
+                    //     data: {
+                    //         type: "FeatureCollection",
+                    //         crs: {
+                    //             type: "name",
+                    //             properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
+                    //         },
+                    //         features: this.$store.state.legalPois,
+                    //     }
+                    // })
+                    // map.addLayer(//添加热力图
+                    //     {
+                    //         id: "vendorPois-heat",
+                    //         type: "heatmap",
+                    //         source: "legalPois",
+                    //         maxzoom: 22,
+                    //         paint: {
+                    //             // "heatmap-weight": [//热力图的权重,控制该点样式相比标准样式的显眼程度，也就是在整块热力图中贡献多少。根据每个要素mag属性值赋予该要素热力强度,mag值小于0时值为0，0<=mag<6时值在0~1之间线性分布,mag>=6赋予1
+                    //             //   "interpolate",
+                    //             //   ["linear"],
+                    //             //   ["get", "mag"],
+                    //             //   0,
+                    //             //   0,
+                    //             //   6,
+                    //             //   1,
+                    //             // ],
+                    //             "heatmap-weight": 1,
+                    //             "heatmap-intensity": [//热力图的强度,控制整个热力图的显眼程度,也就是圆的红色中心圆半径和颜色强度。根据缩放级别赋值(同上)
+                    //                 "interpolate",
+                    //                 ["linear"],
+                    //                 ["zoom"],
+                    //                 0,
+                    //                 0.7,
+                    //                 22,
+                    //                 3,
+                    //             ],
+                    //             "heatmap-color": [//热力颜色,根据热力图强度赋值
+                    //                 "interpolate",
+                    //                 ["linear"],
+                    //                 ["heatmap-density"],
+                    //                 0,
+                    //                 "rgba(33,102,172,0)",
+                    //                 0.2,
+                    //                 "rgb(103,169,207)",
+                    //                 0.4,
+                    //                 "rgb(209,229,240)",
+                    //                 0.6,
+                    //                 "rgb(253,219,199)",
+                    //                 0.8,
+                    //                 "rgb(239,138,98)",
+                    //                 1,
+                    //                 "rgb(178,24,43)",
+                    //             ],
+                    //             // Adjust the heatmap radius by zoom level
+                    //             "heatmap-radius": [
+                    //                 "interpolate",
+                    //                 ["linear"],
+                    //                 ["zoom"],
+                    //                 0,
+                    //                 2,
+                    //                 19,
+                    //                 20,
+                    //             ],
+                    //             // Transition from heatmap to circle layer by zoom level
+                    //             // "heatmap-opacity": [
+                    //             //   "interpolate",
+                    //             //   ["linear"],
+                    //             //   ["zoom"],
+                    //             //   7,
+                    //             //   1,
+                    //             //   9,
+                    //             //   0,
+                    //             // ],
+                    //         },
+                    //         "layout": { // 布局类属性
+                    //             "visibility": "none", // 可见性（可选，可选值为 none、visible，默认值为 visible）
+                    //         },
+                    //     },
+                    //     "waterway-label"
+                    // );
+                    // map.addLayer({
+                    //     id: "allLegalPoi",
+                    //     type: "circle",
+                    //     source: "legalPois",
+                    //     paint: {//对这图层的每个要素设置颜色，而不是整体赋予
+                    //         "circle-color": "#f28cb1",
+                    //         "circle-radius": 8,
+                    //     },
+                    //     layout: { // 布局类属性
+                    //         "visibility": "none", // 可见性（可选，可选值为 none、visible，默认值为 visible）
+                    //     },
+                    // })
+                    // this.map.addSource("violaterPois", {
+                    //     type: "geojson",
+                    //     data: {
+                    //         type: "FeatureCollection",
+                    //         crs: {
+                    //             type: "name",
+                    //             properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
+                    //         },
+                    //         features: res.data,
+                    //     },
+                    //     cluster: true,
+                    //     clusterMaxZoom: 17, // Max zoom to cluster points on
+                    //     clusterRadius: 35, // Radius of each cluster  clustering points (defaults to 50)
+                    // });
+                    // map.addLayer({//聚合圆
+                    //     id: "violateClusters",
+                    //     type: "circle",
+                    //     source: "violaterPois",
+                    //     filter: ["has", "point_count"],
+                    //     paint: {//对这图层的每个要素设置颜色，而不是整体赋予
+                    //         "circle-color": "#cb1c1c",
+                    //         "circle-radius": [
+                    //             "step",
+                    //             ["get", "point_count"],
+                    //             15,
+                    //             30,
+                    //             22,
+                    //             100,
+                    //             34,
+                    //         ],
+                    //     },
+                    // });
+                    // map.addLayer({
+                    //     id: "violateCluster-count",
+                    //     type: "symbol",
+                    //     source: "violaterPois",
+                    //     filter: ["has", "point_count"],
+                    //     layout: {
+                    //         "text-field": "{point_count_abbreviated}",
+                    //         "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                    //         "text-size": 10,
+                    //     },
+                    // });
+                    // map.addLayer({//图标图层
+                    //     id: "violateIcon",
+                    //     type: "symbol",
+                    //     source: "violaterPois",
+                    //     filter: ["!", ["has", "point_count"]],
+                    //     layout: {
+                    //         "icon-image": "wg", // 图标的图片（可选，这里填写在 sprite 雪碧图中图标名称）
+                    //         "icon-size": 0.7, // 图标的大小（可选，值 >= 0，默认值为 1。这里实际上是图标对应的原始图片的大小的缩放比例。值为 1 表示图标大小为原始图片的大小）
+                    //     },
+                    //     // paint: {
+                    //     //     "circle-color": "#11b4da",
+                    //     //     "circle-radius": 4,
+                    //     //     "circle-stroke-width": 1,
+                    //     //     "circle-stroke-color": "#fff",
+                    //     // },
+                    // });
                     return ""
                 }).then(() => {
-                    map.moveLayer("scauBoreder", "violateClusters")
+                    // map.moveLayer("scauBoreder", "violateClusters")
                 });
             });
             $axios.get("/poi/departmentInfo/getFeatures").then((res) => {

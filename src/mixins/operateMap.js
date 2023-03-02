@@ -1,4 +1,3 @@
-// import * as turf from "@turf/turf";
 export const operateMap = {
   data() {
     return {
@@ -156,60 +155,59 @@ export const operateMap = {
         map.getCanvas().style.cursor = "crosshair";
         this.showEle = document.createElement("div");
         this.showEle.setAttribute("class", "measure-area-result");
-        // const option = {
-        //   element: this.showEle,
-        //   anchor: "left",
-        //   offset: [8, 0],
-        // };
+        const option = {
+          element: this.showEle,
+          anchor: "left",
+          offset: [8, 0],
+        };
         // this.tooltip = new mapboxgl.Marker(option).setLngLat([0, 0]).addTo(map);
-        // this.tooltip = new mapboxgl.Marker();
-
         map.on("mousemove", this.drawMoveHandler);
         map.on("click", this.pickClick);
       }
     },
     pickClick(e) {//点击拾取回调
       if (this.isPick) {
-        // this.lnglats.push([e.lngLat.lng, e.lngLat.lat])
-        // if (this.lnglats.length > 4) {
-        //   console.log("够了")
-        //   $axios({
-        //     method: "post",
-        //     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        //     url: "http://127.0.01:3005/poi/test",
-        //     // 只有params是可以传递参数的,未在express中引入bodyParser之前
-        //     params: this.lnglats,
-        //   }).then((res) => {
-        //     console.log(res.data)
-        //   })
-        // }
-        var pt = turf.point([e.lngLat.lng, e.lngLat.lat]);
-        console.log("转墨卡托", turf.toMercator(pt))
-        let lng = e.lngLat.lng.toString().substring(0, 10);
-        let lat = e.lngLat.lat.toString().substring(0, 10);
-        let PickPopup = new mapboxgl.Popup({
-          // closeButton: false,//是否显示右上角的取消按钮
-          closeOnClick: false,//点击地图不会关闭前一个popup
-        }).addTo(map);
-        PickPopup.setLngLat(e.lngLat)
-          .setHTML(`<h4>坐标经纬度：${lng} , ${lat}</h4>`)
-          .setMaxWidth("350px");
-        this.PickPopups.push(PickPopup);
-        PickPopup.on("close", this.closePick);
+        this.lnglats.push([e.lngLat.lng, e.lngLat.lat])
+        if (this.lnglats.length > 30) {
+          console.log("够了")
+          $axios({
+            method: "post",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            url: "http://127.0.01:3005/poi/test",
+            // 只有params是可以传递参数的,未在express中引入bodyParser之前
+            params: this.lnglats,
+          }).then((res) => {
+            console.log(res.data)
+          })
+        }
+        // var pt = turf.point([e.lngLat.lng, e.lngLat.lat]);
+        // console.log("转墨卡托", turf.toMercator(pt))
+        // let lng = e.lngLat.lng.toString().substring(0, 10);
+        // let lat = e.lngLat.lat.toString().substring(0, 10);
+        // let PickPopup = new mapboxgl.Popup({
+        //   closeButton: true,//是否显示右上角的取消按钮
+        //   closeOnClick: true,//点击地图不会关闭前一个popup  
+        // }).addTo(map);
+        // PickPopup.setLngLat(e.lngLat)
+        //   .setHTML(`<h4>坐标经纬度：${lng} , ${lat}</h4>`)
+        //   .setMaxWidth("350px");
+        // this.PickPopups.push(PickPopup);
+        // PickPopup.on("close", this.closePick);
       }
     },
     closePick() {//关闭拾取回调
       if (this.showEle) {
         this.showEle.remove();
       }
+      console.log("取消拾取")
       // this.tooltip.remove();
-      // this.tooltip = null;
+      this.tooltip = null;
       this.isPick = false;
       this.isCancel = true
       map.getCanvas().style.cursor = "";
-      this.PickPopups.forEach((item) => {
-        item.remove();
-      });
+      // this.PickPopups.forEach((item) => {
+      //   item.remove();
+      // });
       map.off("mousemove", this.drawMoveHandler);
       map.off("click", this.pickClick);
     },

@@ -53,7 +53,8 @@
               :violatedrawerVisible.sync="violatedrawerVisible"
               :columnList="columnList"
               :drawerTitle="drawerTitle"
-            ></router-view>
+            >
+            </router-view>
           </keep-alive>
         </el-main>
       </el-container>
@@ -81,12 +82,7 @@ export default {
         {
           label: "数据管理",
           icon: "el-icon-wallet",
-          children: [
-            "摊贩信息面板",
-            "违规摊贩信息",
-            "城管信息面板",
-            "部门信息面板",
-          ],
+          children: ["摊贩信息面板", "城管信息面板", "部门信息面板"],
         },
         {
           label: "数据统计",
@@ -110,7 +106,7 @@ export default {
       tableDatas: [],
       typeList: [],
       drawerTitle: "", //抽屉标题
-      isHeat:false//记录是否在展示热力图
+      isHeat: false, //记录是否在展示热力图
     };
   },
   methods: {
@@ -144,12 +140,26 @@ export default {
       });
     },
     asideClick(item) {
+      console.log("当前路由", this.$route);
+      if (this.$route.name == "statistics") {
+        this.$router.go(-1);
+        // this.$nextTick(() => {
+        setTimeout(() => {
+          this.switchFun(item);
+        }, 300);
+
+        // });
+      } else {
+        this.switchFun(item);
+      }
+    },
+    switchFun(item) {
       switch (item) {
         case "摊贩热点分析":
           this.heatAnalysis();
           break;
         case "动态位置展示":
-          this.DTdiplay(this.$store.state.minTime,this.$store.state.maxTime);
+          this.DTdiplay(this.$store.state.minTime, this.$store.state.maxTime);
           break;
         case "摊贩信息面板":
           this.openDrawer(
@@ -188,6 +198,7 @@ export default {
               "甜品饮料",
               "宠物销售",
               "蔬菜瓜果",
+              "占道经营",
               "其他",
             ],
             "/poi/pagequery/1"

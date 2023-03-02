@@ -12,9 +12,9 @@ export const asideOperate = {
       map.setLayoutProperty('clusters', 'visibility', 'none');
       map.setLayoutProperty('cluster-count', 'visibility', 'none');
       map.setLayoutProperty('icon-image', 'visibility', 'none');
-      map.setLayoutProperty('violateClusters', 'visibility', 'none');
-      map.setLayoutProperty('violateCluster-count', 'visibility', 'none');
-      map.setLayoutProperty('violateIcon', 'visibility', 'none');
+      // map.setLayoutProperty('violateClusters', 'visibility', 'none');
+      // map.setLayoutProperty('violateCluster-count', 'visibility', 'none');
+      // map.setLayoutProperty('violateIcon', 'visibility', 'none');
       this.isHeat = true;
       // map.addLayer(
       //   {
@@ -155,17 +155,18 @@ export const asideOperate = {
       if (this.interval) {
         this.endDTdiplay()
       } else {
-        map.setLayoutProperty('allLegalPoi', 'visibility', 'visible');
+        console.log("动态显示最大最小时间",maxTime,minTime)
+        map.setLayoutProperty('allLegalPoiLayer', 'visibility', 'visible');
         map.setLayoutProperty('vendorPois-heat', 'visibility', 'none');
         map.setLayoutProperty('clusters', 'visibility', 'none');
         map.setLayoutProperty('cluster-count', 'visibility', 'none');
         map.setLayoutProperty('icon-image', 'visibility', 'none');
-        map.setLayoutProperty('violateClusters', 'visibility', 'none');
-        map.setLayoutProperty('violateCluster-count', 'visibility', 'none');
-        map.setLayoutProperty('violateIcon', 'visibility', 'none');
+        // map.setLayoutProperty('violateClusters', 'visibility', 'none');
+        // map.setLayoutProperty('violateCluster-count', 'visibility', 'none');
+        // map.setLayoutProperty('violateIcon', 'visibility', 'none');
         this.interval = window.setInterval(() => {
           console.log("又一个")
-          map.setFilter('allLegalPoi', ["all", ['>=', 'time', minTime], ['<=', 'time', minTime + 57594642]]);
+          map.setFilter('allLegalPoiLayer', ["all", ['>=', 'time', minTime], ['<=', 'time', minTime + 57594642]]);
           minTime += 157594642;
           if (minTime > maxTime) {
             this.endDTdiplay()
@@ -175,15 +176,15 @@ export const asideOperate = {
     },
     endDTdiplay() {
       clearInterval(this.interval)
-      map.setLayoutProperty('allLegalPoi', 'visibility', 'none');
+      map.setLayoutProperty('allLegalPoiLayer', 'visibility', 'none');
       this.interval = null
       map.setLayoutProperty('vendorPois-heat', 'visibility', 'none');
       map.setLayoutProperty('clusters', 'visibility', 'visible');
       map.setLayoutProperty('cluster-count', 'visibility', 'visible');
       map.setLayoutProperty('icon-image', 'visibility', 'visible');
-      map.setLayoutProperty('violateClusters', 'visibility', 'visible');
-      map.setLayoutProperty('violateCluster-count', 'visibility', 'visible');
-      map.setLayoutProperty('violateIcon', 'visibility', 'visible');
+      // map.setLayoutProperty('violateClusters', 'visibility', 'visible');
+      // map.setLayoutProperty('violateCluster-count', 'visibility', 'visible');
+      // map.setLayoutProperty('violateIcon', 'visibility', 'visible');
     }
   }
 }

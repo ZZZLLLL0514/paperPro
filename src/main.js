@@ -8,12 +8,16 @@ Vue.use(ElementUI);
 import axios from 'axios'
 window.$axios = axios
 
+import * as turf from "@turf/turf";
+window.turf=turf
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxLanguage from "@mapbox/mapbox-gl-language";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
+// import MapboxDraw from "@mapbox/mapbox-gl-draw";  
 import mapboxgl from '!mapbox-gl';
-window.mapboxgl = mapboxgl
+window.mapboxgl = mapboxgl;
+// window.MapboxDraw=MapboxDraw;
 mapboxgl.accessToken =
   "pk.eyJ1IjoieGlhb2xpYW5nbWFwYm94IiwiYSI6ImNsNHdrMnExZjJmZXkzb3F6YXc5Y3NzbzgifQ.gkq9Xyh15ZJLQcte_TmMEQ";
 window.MapboxGeocoder = MapboxGeocoder
