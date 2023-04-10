@@ -11,7 +11,11 @@ export default new Vuex.Store({
         legalPois: [],
         minTime: 0,
         maxTime: 0,
-        StudentDormitorySource: null
+        StudentDormitorySource: null,
+        departmentInfos: [],
+        isCollapse:false,
+        isHeat:false,
+        userInfo:null
     },
     mutations: {
         addViolatePois(state, value) {
@@ -28,6 +32,18 @@ export default new Vuex.Store({
         },
         addStudentDormitorySource(state, value) {
             state.StudentDormitorySource = value;
+        },
+        addDepartmentInfos(state, value) {
+            state.departmentInfos = value
+        },
+        collapseMenu(state, value) {
+            state.isCollapse = !state.isCollapse
+        },
+        changeHeat(state,value){
+          state.isHeat=value;
+        },
+        addUserInfo(state,value){
+            state.userInfo=value;
         }
     },
 })

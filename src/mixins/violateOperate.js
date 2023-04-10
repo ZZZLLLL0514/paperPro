@@ -91,7 +91,7 @@ export const violateOperate = {
             })
                 .then(() => {
                     this.violateloading = true;
-                    $axios.delete(`/poi/delete/${row._id}`).then((res) => {
+                    $axios.delete(`/poi_p/delete/${row._id}`).then((res) => {
                         if (res.data.success) {
                             this.violategridData = [];
                             // debugger
@@ -102,10 +102,10 @@ export const violateOperate = {
                                         break;
                                     }
                                 }
-                                let prePois = this.violatecurrentPage * 3;
+                                let prePois = this.violatecurrentPage * 10;
                                 this.violatetotalPoi = this.violatefilterPois.length;
                                 for (
-                                    let i = 3 * (this.violatecurrentPage - 1);
+                                    let i = 10 * (this.violatecurrentPage - 1);
                                     i < prePois && i < this.violatefilterPois.length;
                                     i++
                                 ) {
@@ -151,7 +151,7 @@ export const violateOperate = {
         },
         getDataAfterDelete() {
             console.log("当前页数",this.violatecurrentPage)
-            $axios.get(`/poi/pagequery/1`).then((respois) => {
+            $axios.get(`/poi_p/pagequery/1`).then((respois) => {
                 if (respois.data.allData.length) {
                     this.violatetotalPoi = respois.data.violatetotalPoi;
                     let propertiesArr = [];
@@ -166,7 +166,7 @@ export const violateOperate = {
                         date: null,
                     };
                 } else {
-                    $axios.get("/poi/pagequery/1").then((respois) => {
+                    $axios.get("/poi_p/pagequery/1").then((respois) => {
                         let propertiesArr = [];
                         this.violatetotalPoi = respois.data.violatetotalPoi;
                         respois.data.allData.forEach((item) => {
@@ -192,7 +192,7 @@ export const violateOperate = {
                         $axios({
                             method: "post",
                             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                            url: "http://127.0.01:3005/poi/deletes",
+                            url: "/poi_p/deletes",
                             // 只有params是可以传递参数的,未在express中引入bodyParser之前
                             params: this.violatedeleteIds,
                         }).then((res) => {
@@ -208,9 +208,9 @@ export const violateOperate = {
                                     });
                                     this.violatefilterPois = violatefilterPois;
                                     this.violatetotalPoi = this.violatefilterPois.length;
-                                    let prePois = this.violatecurrentPage * 3;
+                                    let prePois = this.violatecurrentPage * 10;
                                     for (
-                                        let i = 3 * (this.violatecurrentPage - 1);
+                                        let i = 10 * (this.violatecurrentPage - 1);
                                         i < prePois && i < this.violatefilterPois.length;
                                         i++
                                     ) {
@@ -268,7 +268,7 @@ export const violateOperate = {
         },
         violatesearchById() {
             //根据id搜索按钮回调
-            $axios.get(`/poi/searchid/${this.violatesearchID}`).then((respois) => {
+            $axios.get(`/poi_p/searchid/${this.violatesearchID}`).then((respois) => {
                 if (respois.data) {
                     this.violatetotalPoi = 1;
                     let data = respois.data.properties;
@@ -295,7 +295,7 @@ export const violateOperate = {
                 $axios({
                     method: "post",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    url: "http://127.0.01:3005/poi/filtle",
+                    url: "/poi_p/filtle",
                     // 只有params是可以传递参数的,未在express中引入bodyParser之前
                     params: this.violatefilterForm,
                 }).then((respois) => {
@@ -311,7 +311,7 @@ export const violateOperate = {
                             item.properties.lngLat = item.geometry.coordinates;
                             propertiesArr.push(item.properties);
                         });
-                        if (propertiesArr.length <= 3) {
+                        if (propertiesArr.length <= 10) {
                             //过滤数据小于10条则直接赋予
                             this.violategridData = propertiesArr;
                             this.violatefilterPois = propertiesArr;
@@ -320,7 +320,7 @@ export const violateOperate = {
                             this.violateisFilter = true;
                             this.violatefilterPois = propertiesArr;
                             this.violategridData = [];
-                            for (let i = 0; i < 3; i++) {
+                            for (let i = 0; i < 10; i++) {
                                 this.violategridData.push(propertiesArr[i]);
                             }
                             this.violatecurrentPage = 1;
@@ -338,7 +338,7 @@ export const violateOperate = {
                 //不设置过滤条件则请求所有数据
                 this.violateloading = true;
                 this.violateisFilter = false;
-                $axios.get("/poi/getFeatures").then((res) => {
+                $axios.get("/poi_p/getFeatures").then((res) => {
                     res.data.map((item) => {
                         delete item._id;
                         delete item.__v;
@@ -348,7 +348,7 @@ export const violateOperate = {
                         features: res.data,
                     });
                 });
-                $axios.get("/poi/pagequery/1").then((respois) => {
+                $axios.get("/poi_p/pagequery/1").then((respois) => {
                     let propertiesArr = [];
                     this.violatetotalPoi = respois.data.violatetotalPoi;
                     respois.data.allData.forEach((item) => {
@@ -368,17 +368,17 @@ export const violateOperate = {
         violatechangePage(violatecurrentPage) {
             console.log("当前页", violatecurrentPage);
             if (this.violateisFilter) {
-                let prePois = violatecurrentPage * 3;
+                let prePois = violatecurrentPage * 10;
                 this.violategridData = []; //清零
                 for (
-                    let i = 3 * (violatecurrentPage - 1);
+                    let i = 10 * (violatecurrentPage - 1);
                     i < prePois && i < this.violatefilterPois.length;
                     i++
                 ) {
                     this.violategridData.push(this.violatefilterPois[i]);
                 }
             } else {
-                $axios.get(`/poi/pagequery/${violatecurrentPage}`).then((respois) => {
+                $axios.get(`/poi_p/pagequery/${violatecurrentPage}`).then((respois) => {
                     if (respois.data) {
                         console.log("请求数据", respois.data);
                         let propertiesArr = [];

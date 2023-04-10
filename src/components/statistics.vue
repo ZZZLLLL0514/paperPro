@@ -1,6 +1,7 @@
 <template>
   <div class="echarts-main">
-    <el-button style="margin:5px" type="primary" @click="back">返回</el-button>
+    <el-page-header @back="back" content="摊贩统计" ref="pageHeader">  </el-page-header>
+    <!-- <el-button style="margin:5px" type="primary" @click="back">返回</el-button> -->
     <div class="top">
       <div class="amount">
         <div>
@@ -8,21 +9,21 @@
           <h2>{{ this.$store.state.legalPois.length }}</h2>
           <span>历史记录数</span>
         </div>
-        <div>
+        <!-- <div>
           <span>违规摊贩统计</span>
           <h2>{{ this.$store.state.violatePois.length }}</h2>
           <span>历史记录数</span>
-        </div>
+        </div> -->
       </div>
       <div id="legalPropor"></div>
       <div id="typeAmount"></div>
     </div>
     <div class="centre">
-      <div id="illegal"></div>
+      <!-- <div id="illegal"></div> -->
       <div id="heat"></div>
     </div>
     <div id="timeTrend"></div>
-    <div id="violateTrend"></div>
+    <!-- <div id="violateTrend" ref="violateTrend"></div> -->
   </div>
 </template>
 
@@ -30,6 +31,11 @@
 export default {
   name: "statistics",
   mounted() {
+  // setTimeout(console.log("dom",document.getElementById("timeTrend")) ,0) 
+  // this.$nextTick(()=>{
+  //   console.log("dom",document.getElementById("timeTrend"))
+  //   console.log("获取",this.refs.pageHeader.violateTrend)
+  // })
     let legalPois = this.$store.state.legalPois;
     let violatePois = this.$store.state.violatePois;
     let cw = 0, //宠物
@@ -286,7 +292,7 @@ export default {
         },
       ],
     };
-    this.initEchart("illegal", illegal_option);
+    // this.initEchart("illegal", illegal_option);
 
     const hours = [
       "12a",
@@ -338,7 +344,7 @@ export default {
     });
     let heat_option = {
       title: {
-        text: "合法摊贩数量热力图",
+        text: "摊贩数量热力图",
         left: "center",
       },
       tooltip: {
@@ -413,10 +419,10 @@ export default {
           violate_times.push(item.properties.time);
         });
         this.initTrend(legal_times, "timeTrend");
-        this.initTrend(violate_times, "violateTrend");
+        // this.initTrend(violate_times, "violateTrend");
       } else {
-        $axios.get("/poi/getFeatures").then((res) => {
-          $axios.get("/poi/violate/getFeatures").then((violateRes) => {
+        $axios.get("/poi_p/getFeatures").then((res) => {
+          $axios.get("/poi_p/violate/getFeatures").then((violateRes) => {
             res.data.map((item) => {
               delete item._id;
               delete item.__v;
@@ -438,7 +444,7 @@ export default {
               violate_times.push(item.properties.time);
             });
             this.initTrend(legal_times, "timeTrend");
-            this.initTrend(violate_times, "violateTrend");
+            // this.initTrend(violate_times, "violateTrend");
           });
         });
       }
@@ -446,8 +452,6 @@ export default {
     initTrend(times, dom) {
       let minTime = Math.min(...times);
       let maxTime = Math.max(...times);
-      console.log("最大元素", maxTime);
-      console.log("最小元素", minTime);
       let data = [];
       times.sort();
       times.forEach((item, index) => {
@@ -464,8 +468,8 @@ export default {
           left: "center",
           text:
             dom == "violateTrend"
-              ? "违法摊贩数量累计趋势"
-              : "合法摊贩数量累计趋势",
+              ? "摊贩数量累计趋势"
+              : "摊贩数量累计趋势",
         },
         legend: {
           orient: "vertical",
@@ -524,12 +528,16 @@ export default {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  .el-page-header{
+    margin-top: 15px;
+  }
   .top {
     display: flex;
     justify-content: space-between;
     align-content: center;
     height: 40vh;
     padding: 0px 5px;
+    margin-top:20px;
     .amount {
       border: 1px solid rgb(190, 181, 166);
       width: 13vw;
@@ -570,7 +578,7 @@ export default {
     }
     #heat {
       border: 1px solid rgb(190, 181, 166);
-      width: 47vw;
+      width: 100%;
       height: 100%;
       margin-right: 10px;
     }

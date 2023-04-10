@@ -13,7 +13,7 @@
         label-width="80px"
         :model="newAddForm"
       >
-        <el-form-item label="类型" prop="type">
+        <el-form-item v-if="drawerTitle == '摊贩信息面板'" label="类型" prop="type">
           <el-select v-model="newAddForm.type" placeholder="请选择一个类型">
             <el-option
               v-for="item in typeList"
@@ -32,7 +32,7 @@
             ></el-input>
           </el-col>
         </el-form-item>
-        <el-form-item label="时间" prop="date">
+        <el-form-item v-if="drawerTitle == '摊贩信息面板'" label="时间" prop="date">
           <el-col :span="24">
             <el-date-picker
               v-model="newAddForm.date"
@@ -43,24 +43,31 @@
             </el-date-picker>
           </el-col>
         </el-form-item>
-        <el-form-item prop="addr" label="地址">
+        <el-form-item v-if="drawerTitle == '摊贩信息面板'||drawerTitle == '部门信息面板'" prop="addr" label="地址">
           <el-input
             v-model="newAddForm.addr"
             placeholder="请输入地址"
             autocomplete="off"
           ></el-input>
         </el-form-item>
-        <el-form-item prop="lngLat" label="经纬度">
+        <el-form-item v-if="drawerTitle == '摊贩信息面板'||drawerTitle == '部门信息面板'" prop="lngLat" label="经纬度">
           <el-input
             v-model="newAddForm.lngLat"
             placeholder="输入经纬度,如113.34923,23.158"
             autocomplete="off"
           ></el-input>
         </el-form-item>
-        <el-form-item prop="name" label="名字">
+        <el-form-item v-if="drawerTitle != '部门信息面板'" prop="name" label="名字">
           <el-input
             v-model="newAddForm.name"
             placeholder="请输入名字"
+            autocomplete="off"
+          ></el-input>
+        </el-form-item>
+        <el-form-item v-if="drawerTitle == '部门信息面板'" prop="name" label="名字">
+          <el-input
+            v-model="newAddForm.region"
+            placeholder="请输入区域"
             autocomplete="off"
           ></el-input>
         </el-form-item>
@@ -74,6 +81,18 @@
             placeholder="请输入部门"
             autocomplete="off"
           ></el-input>
+        </el-form-item>
+        <el-form-item v-if="drawerTitle == '城管信息面板'" label="性别" prop="sex">
+          <el-select v-model="newAddForm.sex" placeholder="请选择一个类型">
+            <el-option
+              label="男"
+              value="男"
+            ></el-option>
+            <el-option
+              label="女"
+              value="女"
+            ></el-option>
+          </el-select>
         </el-form-item>
       </el-form>
       <el-button size="mini" type="primary" @click="pickUp">拾取</el-button>
@@ -131,9 +150,6 @@ export default {
   mounted() {},
   methods: {
     pickUp() {
-      //   this.$nextTick(() => {
-      console.log("到底也没有1", document.getElementById("map1"));
-
       this.pickMap = new mapboxgl.Map({
         container: document.getElementById("pickMap"), //容器id
         crs: "EPSG:4326",
@@ -190,16 +206,16 @@ export default {
       let sourceUrl;
       switch (this.drawerTitle) {
         case "摊贩信息面板":
-          sourceUrl = `/poi/getFeatures`;
+          sourceUrl = `/poi_p/getFeatures`;
           break;
         case "违规摊贩信息":
-          sourceUrl = `/poi/violate/getFeatures`;
+          sourceUrl = `/poi_p/violate/getFeatures`;
           break;
         case "城管信息面板":
-          sourceUrl = `/poi/urban/getFeatures`;
+          sourceUrl = `/poi_p/urban/getFeatures`;
           break;
         case "部门信息面板":
-          sourceUrl = `/poi/departmentInfo/getFeatures`;
+          sourceUrl = `/poi_p/departmentInfo/getFeatures`;
           break;
       }
       $axios.get(sourceUrl).then((res) => {
@@ -257,7 +273,7 @@ export default {
             $axios({
               method: "post",
               headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              url: "http://127.0.01:3005/newadd",
+              url: "/poi_p/newadd",
               // 只有params是可以传递参数的,未在express中引入bodyParser之前
               params: data,
             }).then((res) => {
@@ -265,7 +281,7 @@ export default {
               if (res.data == "成功") {
                 this.$emit("update:newAddDialogVisible", false);
                 this.$emit("updateForm");
-                $axios.get("/poi/pagequery/1").then((respois) => {
+                $axios.get("/poi_p/pagequery/1").then((respois) => {
                   let propertiesArr = [];
 
                   respois.data.allData.forEach((item) => {
@@ -294,7 +310,7 @@ export default {
             $axios({
               method: "post",
               headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              url: "http://127.0.01:3005/poi/update",
+              url: "/poi_p/update",
               // 只有params是可以传递参数的,未在express中引入bodyParser之前
               params: data,
             }).then((res) => {
@@ -319,7 +335,7 @@ export default {
                 this.$emit("update:filterPois", this.filterPois);
                 this.$emit("updateForm");
                 $axios
-                  .get(`/poi/pagequery/${this.currentPage}`)
+                  .get(`/poi_p/pagequery/${this.currentPage}`)
                   .then((respois) => {
                     let propertiesArr = [];
 
@@ -336,7 +352,7 @@ export default {
               }
             });
           }
-          $axios.get("/poi/getFeatures").then((res) => {
+          $axios.get("/poi_p/getFeatures").then((res) => {
             res.data.map((item) => {
               delete item._id;
               delete item.__v;

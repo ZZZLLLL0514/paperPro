@@ -1,5 +1,5 @@
 export const getFeatures = function () {
-    $axios.get("/poi/getFeatures").then((respois) => {
+    $axios.get("/poi_p/getFeatures").then((respois) => {
         let propertiesArr = [];
         respois.data.forEach((item) => {
             item.properties._id = item._id;

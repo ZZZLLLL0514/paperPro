@@ -8,16 +8,16 @@
       label-width="100px"
       class="login-container"
     >
-      <h3 class="login-title">系统登录</h3>
+      <h3 class="login-title">华农周边流动摊贩管理系统</h3>
       <el-form-item
         label="用户名"
         label-width="80px"
-        prop="username"
-        class="username"
+        prop="account"
+        class="account"
       >
         <el-input
           type="input"
-          v-model="form.username"
+          v-model="form.account"
           auto-complete="off"
           placeholder="请输入账号"
         ></el-input>
@@ -33,12 +33,20 @@
           v-model="form.password"
           auto-complete="off"
           placeholder="请输入密码"
+          @change="login"
         ></el-input>
       </el-form-item>
       <el-form-item class="login-submit">
-        <el-button type="primary" @click="login">登录</el-button>
+        <el-button
+          :icon="isLogin ? 'el-icon-loading' : ''"
+          type="primary"
+          @click="login"
+          >{{ isLogin ? "登录中" : "登录" }}</el-button
+        >
       </el-form-item>
+      <el-link type="primary" @click="noLogin">普通浏览 </el-link>
     </el-form>
+
     <router-view></router-view>
   </div>
 </template>
@@ -52,58 +60,62 @@ export default {
   data() {
     return {
       form: {
-        username: "",
+        account: "",
         password: "",
       },
 
       rules: {
-        username: [
+        account: [
           { required: true, message: "请输入用户名", trigger: "blur" },
           {
             min: 3,
-            message: "用户名长度不能小于3位",
+            message: "账号长度不能小于3位",
             trigger: "blur",
           },
         ],
 
         password: [{ required: true, message: "请输入密码", trigger: blur }],
       },
+      isLogin: false,
     };
   },
   created() {
-    if (Cookie.get("username") && Cookie.get("password")) {
-      this.form.username = Cookie.get("username");
-      this.form.password = Cookie.get("password");
+    if (sessionStorage.getItem("isSignIn") == "true") {
+      this.form.account = sessionStorage.getItem("account");
+      this.form.password = sessionStorage.getItem("password");
     }
   },
   methods: {
     login() {
-      let { username, password } = this.form;
+      this.isLogin = true;
+      let { account, password } = this.form;
       let params = new FormData();
-      params.append("username", username);
+      params.append("account", account);
       params.append("password", password);
-      $axios({
-        method: "post",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        url: "http://127.0.01:3005/login",
-        // 只有params是可以传递参数的,未在express中引入bodyParser之前
-        params: this.form,
-      }).then((res) => {
-        console.log(res);
+      let url = `/login_p?account=${account}&password=${password}`;
+      $axios.get(url).then((res) => {
+        this.$nextTick(() => {
+          this.isLogin = false;
+        });
         let status = res.data.meta.msg;
         if (status == "success") {
-          //   this.$store.commit("router", this.$router);
-          console.log("router", this.$router);
           sessionStorage.setItem("isSignIn", "true");
-          //   this.$store.commit("addMenu", this.$router);
+          sessionStorage.setItem("account", res.data.user[0].account);
+          sessionStorage.setItem("password", res.data.user[0].password);
+          sessionStorage.setItem(
+            "userInfo",
+            `${res.data.user[0].account},${res.data.user[0].name},${res.data.user[0].department},${res.data.user[0].phone},${res.data.user[0].mail}`
+          );
+          this.$store.commit("addUserInfo", res.data.user[0]);
+          Cookie.set("token", res.data.user.token);
           this.$router.push({ name: "map" });
         } else {
           this.$message.error("登录失败，请检测密码或账号是否正确");
         }
       });
-      // await $axios.get("http://127.0.01:4000/ajaxserver/aja").then((res) => {
-      //   console.log("请求结果", res);
-      // });
+    },
+    noLogin() {
+      this.$router.replace({ name: "map" });
     },
   },
 };
@@ -125,9 +137,14 @@ export default {
     transform: translate(-50%, -50%);
     width: 350px;
     padding: 35px 35px 15px 35px;
-    background-color:rgba($color: #ffffff, $alpha: 0.5);
+    background-color: rgba($color: #ffffff, $alpha: 0.5);
     border: 1px solid #eaeaea;
     // box-shadow: 0 0 25px #cac6c6;
+    .el-link {
+      margin-left: 145px;
+      font-size: 15px;
+      color: #000;
+    }
   }
 
   .login-title {

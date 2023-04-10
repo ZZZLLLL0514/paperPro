@@ -12,7 +12,7 @@
         </el-tooltip>
       </div>
     </div>
-    <div class="topBar" ref="topBar">
+    <div v-show="!isHeat" class="topBar" ref="topBar">
       <div class="butnContian">
         <el-button size="small" round
           ><a :href="href" download="map.png" @click="exportMap()"
@@ -68,10 +68,25 @@
           "
         >
           <div ref="jhg" id="jh">
-            <el-button size="mini" @click="newAdd" type="primary"
+            <el-button
+              size="mini"
+              type="primary"
+              icon="el-icon-download"
+              @click="downloadExcel"
+              >导出属性表</el-button
+            >
+            <el-button
+              v-permission="'dsg'"
+              size="mini"
+              @click="newAdd"
+              type="primary"
               >新增</el-button
             >
-            <el-button size="mini" @click="batchDeletion" type="danger"
+            <el-button
+              v-permission="'dsg'"
+              size="mini"
+              @click="batchDeletion"
+              type="danger"
               >删除选中</el-button
             >
           </div>
@@ -119,7 +134,6 @@
             >过滤</el-button
           >
         </el-form>
-
         <el-divider></el-divider>
         <el-table
           height="70vh"
@@ -148,15 +162,23 @@
             <template slot-scope="scope">
               <el-button
                 @click="viewPoiClick(scope.row)"
-                v-show="typeList.length"
+                v-if="drawerTitle != '城管信息面板'"
                 type="text"
                 size="small"
                 >查看</el-button
               >
-              <el-button @click="editPOI(scope.row)" type="text" size="small"
+              <el-button
+                v-permission="'dsg'"
+                @click="editPOI(scope.row)"
+                type="text"
+                size="small"
                 >编辑</el-button
               >
-              <el-button @click="deletePOI(scope.row)" size="small" type="text"
+              <el-button
+                v-permission="'dsg'"
+                @click="deletePOI(scope.row)"
+                size="small"
+                type="text"
                 >删除</el-button
               >
             </template>
@@ -167,7 +189,7 @@
           background
           class="pager"
           layout="prev, pager, next"
-          :page-size="3"
+          :page-size="10"
           :total="totalPoi"
           :current-page.sync="currentPage"
         >
@@ -175,12 +197,15 @@
       </el-drawer>
     </keep-alive>
     <el-drawer
-      title="周边摊贩分析"
+      :title="analysisResultTitle"
       :before-close="ZBvendorClose"
       direction="rtl"
       :visible="ZBdrawerVisible"
       size="37%"
     >
+      <div class="vendorStatistics">
+        <span>摊贩总数： {{ this.features.length }}</span>
+      </div>
       <div id="timeFB"></div>
       <div id="vendorNumber"></div>
     </el-drawer>
@@ -230,6 +255,27 @@
         >
       </span>
     </el-dialog>
+    <el-dialog
+      title="选择出发部门"
+      :visible.sync="departmentDialogVisible"
+      width="30%"
+      :before-close="departmentClose"
+    >
+      <el-select v-model="selecDepartment" placeholder="选择部门">
+        <el-option
+          v-for="item in this.$store.state.departmentInfos"
+          :key="item.properties.department"
+          :label="item.properties.department"
+          :value="item.properties.department"
+        ></el-option>
+      </el-select>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="departmentDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="createPath(selecDepartment)"
+          >确 定</el-button
+        >
+      </span>
+    </el-dialog>
     <div v-show="isShow" id="coorContainer" class="coorContainer"></div>
   </div>
 </template>
@@ -239,9 +285,11 @@ import { operateMap } from "@/mixins/operateMap";
 import { addLayer } from "@/mixins/addLayer";
 import { topBarOperate } from "@/mixins/topBarOperate";
 import newEdit from "./newEdit.vue";
+import coordtransform from "coordtransform";
+import * as XLSX from "xlsx"
 export default {
   name: "Map",
-  mixins: [operateMap, addLayer, topBarOperate],
+  mixins: [operateMap, addLayer, topBarOperate], 
   components: { newEdit },
   props: {
     drawerVisible: {
@@ -263,6 +311,9 @@ export default {
   data() {
     return {
       bufferDialogVisible: false, //缓冲区对话框可见性
+      departmentDialogVisible: false,
+      selecDepartment: "", //路径规划时选择的出发部门
+      destinationCoors: [], //目的地经纬度
       bufferRules: {
         layer: [{ required: true, message: "请输入类型", trigger: "change" }],
         distant: [{ required: true, message: "请输入姓名", trigger: "blur" }],
@@ -276,7 +327,14 @@ export default {
       map: null, //实例地图
       pickMap: null,
       newAddDialogVisible: false, //新增摊贩对话框
-      newAddForm: null,
+      newAddForm: {
+        type: "",
+        name: "",
+        date: "",
+        id: "",
+        addr: "",
+        lngLat: [],
+      },
       deleteIds: [], //要删除的id列表
       searchID: "",
       filterForm: {
@@ -304,11 +362,13 @@ export default {
           name: "buff",
         },
       ],
+      analysisResultTitle:""//摊贩分析结果标题
     };
   },
   mounted() {
     this.initMap();
     window.map = this.map;
+    document.getElementsByClassName("mapboxgl-canvas")[0].style.width='100%';//设置canvas宽度
   },
   methods: {
     vendorInfoClose() {
@@ -326,6 +386,28 @@ export default {
       this.newAddForm = row;
       this.newAddDialogVisible = true;
     },
+    downloadExcel() {
+      let tableDatas = [];
+      $axios
+        .get("/poi_p/getFeatures")
+        .then((res) => {
+          res.data.forEach((item) => {
+            tableDatas.push(item.properties);
+          });
+          return "";
+        })
+        .then( () => {
+          let data = [
+            { a: 123, b: 456 },
+            { a: 888, b: 999 },
+          ];
+          let fileName = "表格数据";
+          let ws = XLSX.utils.json_to_sheet(tableDatas);
+          let wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, fileName); // 工作簿名称
+          XLSX.writeFile(wb, `${fileName}.xlsx`); // 保存的文件名
+        });
+    },
     deletePOI(row) {
       this.$confirm("此操作将永久删除该文件, 是否继续?", "提示", {
         confirmButtonText: "确定",
@@ -337,15 +419,15 @@ export default {
           let url;
           switch (this.drawerTitle) {
             case "摊贩信息面板":
-              url = `/poi/delete/${row._id}`;
+              url = `/poi_p/delete/${row._id}`;
               break;
             case "违规摊贩信息":
-              url = `/poi/violate/delete/${row._id}`;
+              url = `/poi_p/violate/delete/${row._id}`;
               break;
             case "城管信息面板":
-              url = `/poi/urban/delete/${row._id}`;
+              url = `/poi_p/urban/delete/${row._id}`;
             case "部门信息面板":
-              url = `/poi/departmentInfo/delete/${row._id}`;
+              url = `/poi_p/departmentInfo/delete/${row._id}`;
               break;
           }
           $axios.delete(url).then((res) => {
@@ -358,10 +440,10 @@ export default {
                     break;
                   }
                 }
-                let prePois = this.currentPage * 3;
+                let prePois = this.currentPage * 10;
                 this.totalPoi = this.filterPois.length;
                 for (
-                  let i = 3 * (this.currentPage - 1);
+                  let i = 10 * (this.currentPage - 1);
                   i < prePois && i < this.filterPois.length;
                   i++
                 ) {
@@ -407,7 +489,7 @@ export default {
       console.log("查看", row);
       this.map.flyTo({
         center: [row.lngLat[0], row.lngLat[1]],
-        zoom: 17.3,
+        zoom: 17.2,
         speed: 0.5,
       });
       this.viewPopup = new mapboxgl.Popup({
@@ -416,23 +498,29 @@ export default {
       }).addTo(map);
       this.viewPopup
         .setLngLat(row.lngLat)
-        .setHTML(`<h5>摊主姓名:${row.name}</h5><h5>经营类型:${row.type}</h5>`)
+        .setHTML(
+          `<h5>摊主姓名:${row.name}</h5><h5>经营类型:${row.type}</h5><button id="goTo">前往</button>`
+        )
         .setMaxWidth("200px");
+      this.destinationCoors = row.lngLat;
+      this.$nextTick(() => {
+        this.addListener(0, row.lngLat);
+      });
     },
     getDataAfterDelete() {
       let url;
       switch (this.drawerTitle) {
         case "摊贩信息面板":
-          url = `/poi/pagequery/${this.currentPage}`;
+          url = `/poi_p/pagequery/${this.currentPage}`;
           break;
         case "违规摊贩信息":
-          url = `/poi/violate/pagequery/${this.currentPage}`;
+          url = `/poi_p/violate/pagequery/${this.currentPage}`;
           break;
         case "城管信息面板":
-          url = `/poi/urban/pagequery/${this.currentPage}`;
+          url = `/poi_p/urban/pagequery/${this.currentPage}`;
           break;
         case "部门信息面板":
-          url = `/poi/departmentInfo/pagequery/${this.currentPage}`;
+          url = `/poi_p/departmentInfo/pagequery/${this.currentPage}`;
           break;
       }
       $axios.get(url).then((respois) => {
@@ -454,16 +542,16 @@ export default {
           let url;
           switch (this.drawerTitle) {
             case "摊贩信息面板":
-              url = `/poi/pagequery/1`;
+              url = `/poi_p/pagequery/1`;
               break;
             case "违规摊贩信息":
-              url = `/poi/violate/pagequery/1`;
+              url = `/poi_p/violate/pagequery/1`;
               break;
             case "城管信息面板":
-              url = `/poi/urban/pagequery/1`;
+              url = `/poi_p/urban/pagequery/1`;
               break;
             case "部门信息面板":
-              url = `/poi/departmentInfo/pagequery/1`;
+              url = `/poi_p/departmentInfo/pagequery/1`;
               break;
           }
           $axios.get(url).then((respois) => {
@@ -492,16 +580,16 @@ export default {
             let url;
             switch (this.drawerTitle) {
               case "摊贩信息面板":
-                url = `http://127.0.01:3005/poi/deletes`;
+                url = `/poi_p/deletes`;
                 break;
               case "违规摊贩信息":
-                url = `http://127.0.01:3005/poi/violate/deletes`;
+                url = `/poi_p/violate/deletes`;
                 break;
               case "城管信息面板":
-                url = `http://127.0.01:3005/poi/urban/deletes`;
+                url = `/poi_p/urban/deletes`;
                 break;
               case "部门信息面板":
-                url = `http://127.0.01:3005/poi/departmentInfo/deletes`;
+                url = `/poi_p/departmentInfo/deletes`;
                 break;
             }
             $axios({
@@ -523,9 +611,9 @@ export default {
                   });
                   this.filterPois = filterPois;
                   this.totalPoi = this.filterPois.length;
-                  let prePois = this.currentPage * 3;
+                  let prePois = this.currentPage * 10;
                   for (
-                    let i = 3 * (this.currentPage - 1);
+                    let i = 10 * (this.currentPage - 1);
                     i < prePois && i < this.filterPois.length;
                     i++
                   ) {
@@ -611,16 +699,16 @@ export default {
       let url;
       switch (this.drawerTitle) {
         case "摊贩信息面板":
-          url = `/poi/searchid/${this.searchID}`;
+          url = `/poi_p/searchid/${this.searchID}`;
           break;
         case "违规摊贩信息":
-          url = `/poi/violate/searchid/${this.searchID}`;
+          url = `/poi_p/violate/searchid/${this.searchID}`;
           break;
         case "城管信息面板":
-          url = `/poi/urban/searchid/${this.searchID}`;
+          url = `/poi_p/urban/searchid/${this.searchID}`;
           break;
         case "部门信息面板":
-          url = `/poi/departmentInfo/searchid/${this.searchID}`;
+          url = `/poi_p/departmentInfo/searchid/${this.searchID}`;
           break;
       }
       $axios.get(url).then((respois) => {
@@ -652,13 +740,13 @@ export default {
           this.drawerTitle //不用写城管信息面板过滤功能
         ) {
           case "摊贩信息面板":
-            url = `http://127.0.01:3005/poi/filtle`;
+            url = `/poi_p/filtle`;
             break;
           case "违规摊贩信息":
-            url = `http://127.0.01:3005/poi/violate/filtle`;
+            url = `/poi_p/violate/filtle`;
             break;
           case "部门信息面板":
-            url = `http://127.0.01:3005/poi/departmentInfo/filtle`;
+            url = `/poi_p/departmentInfo/filtle`;
             break;
         }
         $axios({
@@ -690,7 +778,7 @@ export default {
               item.properties.lngLat = item.geometry.coordinates;
               propertiesArr.push(item.properties);
             });
-            if (propertiesArr.length <= 3) {
+            if (propertiesArr.length <= 10) {
               //过滤数据小于10条则直接赋予
               this.gridData = propertiesArr;
               this.filterPois = propertiesArr;
@@ -699,7 +787,7 @@ export default {
               this.isFilter = true;
               this.filterPois = propertiesArr;
               this.gridData = [];
-              for (let i = 0; i < 3; i++) {
+              for (let i = 0; i < 10; i++) {
                 this.gridData.push(propertiesArr[i]);
               }
               this.currentPage = 1;
@@ -720,16 +808,16 @@ export default {
         let sourceUrl;
         switch (this.drawerTitle) {
           case "摊贩信息面板":
-            sourceUrl = `/poi/getFeatures`;
+            sourceUrl = `/poi_p/getFeatures`;
             break;
           case "违规摊贩信息":
-            sourceUrl = `/poi/violate/getFeatures`;
+            sourceUrl = `/poi_p/violate/getFeatures`;
             break;
           case "城管信息面板":
-            sourceUrl = `/poi/urban/getFeatures`;
+            sourceUrl = `/poi_p/urban/getFeatures`;
             break;
           case "部门信息面板":
-            sourceUrl = `/poi/departmentInfo/getFeatures`;
+            sourceUrl = `/poi_p/departmentInfo/getFeatures`;
             break;
         }
         $axios.get(sourceUrl).then((res) => {
@@ -755,15 +843,15 @@ export default {
         let url;
         switch (this.drawerTitle) {
           case "摊贩信息面板":
-            url = `/poi/violate/pagequery/1`;
+            url = `/poi_p/violate/pagequery/1`;
             break;
           case "违规摊贩信息":
-            url = `/poi/violate/pagequery/1`;
+            url = `/poi_p/violate/pagequery/1`;
             break;
           case "城管信息面板":
-            url = `/poi/urban/pagequery/1`;
+            url = `/poi_p/urban/pagequery/1`;
           case "部门信息面板":
-            url = `/poi/departmentInfo/pagequery/1`;
+            url = `/poi_p/departmentInfo/pagequery/1`;
             break;
         }
         $axios.get(url).then((respois) => {
@@ -785,10 +873,10 @@ export default {
     changePage(currentPage) {
       console.log("当前页", currentPage);
       if (this.isFilter) {
-        let prePois = currentPage * 3;
+        let prePois = currentPage * 10;
         this.gridData = []; //清零
         for (
-          let i = 3 * (currentPage - 1);
+          let i = 10 * (currentPage - 1);
           i < prePois && i < this.filterPois.length;
           i++
         ) {
@@ -798,16 +886,16 @@ export default {
         let url;
         switch (this.drawerTitle) {
           case "摊贩信息面板":
-            url = `/poi/pagequery/${this.currentPage}`;
+            url = `/poi_p/pagequery/${this.currentPage}`;
             break;
           case "违规摊贩信息":
-            url = `/poi/violate/pagequery/${this.currentPage}`;
+            url = `/poi_p/violate/pagequery/${this.currentPage}`;
             break;
           case "城管信息面板":
-            url = `/poi/urban/pagequery/${this.currentPage}`;
+            url = `/poi_p/urban/pagequery/${this.currentPage}`;
             break;
           case "部门信息面板":
-            url = `/poi/departmentInfo/pagequery/${this.currentPage}`;
+            url = `/poi_p/departmentInfo/pagequery/${this.currentPage}`;
             break;
         }
         $axios.get(url).then((respois) => {
@@ -856,6 +944,7 @@ export default {
     cancelHeat() {
       //取消热力图
       this.$emit("update:isHeat", false);
+      this.$store.commit("changeHeat",false);
       map.setLayoutProperty("vendorPois-heat", "visibility", "none");
       map.setLayoutProperty("clusters", "visibility", "visible");
       map.setLayoutProperty("cluster-count", "visibility", "visible");
@@ -893,7 +982,7 @@ export default {
             // console.log("缓冲区",buffers)
             let unionPolygon = null; //缓冲面
             let bufferPoi = [];
-            if (buffers.features.length >= 3) {
+            if (buffers.features.length >= 1) {
               let features = buffers.features;
               for (let i = 0; i < features.length; i++) {
                 if (i == 0) {
@@ -925,6 +1014,12 @@ export default {
                 }
                 // }
               }
+              this.features = bufferPoi;
+              this.ZBdrawerVisible = true;
+              this.analysisResultTitle='缓冲区分析'
+              this.$nextTick(() => {
+                this.createZBecharts();
+              });
               // console.log("缓冲范围内的摊贩点",bufferPoi)
               this.map.addSource("bufferPoi", {
                 type: "geojson",
@@ -967,6 +1062,148 @@ export default {
         }
       });
     },
+    createPath(department) {//路径图层
+      if (this.selecDepartment) {
+        this.departmentDialogVisible = false;
+        this.viewPopup?.remove();
+        this.queryPopup?.remove();
+        if (map.getSource("pathLine")) {
+          map.removeLayer("path-layer");
+          map.removeLayer("line-dashed");
+          map.removeSource("pathLine");
+        }
+        let originCoors;
+        this.$store.state.departmentInfos.forEach((item) => {
+          if (item.properties.department == department)
+            originCoors = [
+              Number(item.geometry.coordinates[0]),
+              Number(item.geometry.coordinates[1]),
+            ];
+        });
+        let gcj02Destina = coordtransform.wgs84togcj02(
+          this.destinationCoors[0],
+          this.destinationCoors[1]
+        ); //将目的地坐标转成高德坐标系
+        let gcj02Origin = coordtransform.wgs84togcj02(
+          originCoors[0],
+          originCoors[1]
+        );
+        let url = `/v3/direction/driving?origin=${gcj02Origin[0]},${gcj02Origin[1]}&destination=${gcj02Destina[0]},${gcj02Destina[1]}&extensions=base&output=json&key=23119cd7d7e0834a0776d04f7a56fc44`;
+        let pathCoors = [];
+        $axios.get(url).then((res) => {
+          console.log("路径", res.data);
+          res.data.route.paths[0].steps.forEach((item) => {
+            let coors = item.polyline.split(";"); //分割坐标字符串
+            coors.forEach((item) => {
+              let transformCoor = coordtransform.gcj02towgs84(
+                Number(item.split(",")[0]),
+                Number(item.split(",")[1])
+              );
+              pathCoors.push([transformCoor[0], transformCoor[1]]);
+            });
+          });
+          map.addSource("pathLine", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              crs: {
+                type: "name",
+                properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" },
+              },
+              features: [
+                {
+                  type: "Feature",
+                  geometry: {
+                    type: "LineString",
+                    coordinates: pathCoors,
+                  },
+                },
+              ],
+            },
+          });
+          map.addLayer({
+            id: "path-layer",
+            type: "line",
+            source: "pathLine",
+            paint: {
+              "line-color": "#585555",
+              "line-width": 5,
+              "line-opacity": 0.8,
+            },
+          });
+          map.addLayer({
+            type: "line",
+            source: "pathLine",
+            id: "line-dashed",
+            paint: {
+              "line-color": "yellow",
+              "line-width": 5,
+              "line-dasharray": [0, 4, 3],
+            },
+          });
+
+          // technique based on https://jsfiddle.net/2mws8y3q/
+          // an array of valid line-dasharray values, specifying the lengths of the alternating dashes and gaps that form the dash pattern
+          const dashArraySequence = [
+            [0, 4, 3],
+            [0.5, 4, 2.5],
+            [1, 4, 2],
+            [1.5, 4, 1.5],
+            [2, 4, 1],
+            [2.5, 4, 0.5],
+            [3, 4, 0],
+            [0, 0.5, 3, 3.5],
+            [0, 1, 3, 3],
+            [0, 1.5, 3, 2.5],
+            [0, 2, 3, 2],
+            [0, 2.5, 3, 1.5],
+            [0, 3, 3, 1],
+            [0, 3.5, 3, 0.5],
+          ];
+
+          let step = 0;
+          function animateDashArray(timestamp) {
+            // Update line-dasharray using the next value in dashArraySequence. The
+            // divisor in the expression `timestamp / 50` controls the animation speed.
+            const newStep = parseInt(
+              (timestamp / 50) % dashArraySequence.length
+            );
+
+            if (newStep !== step) {
+              map.setPaintProperty(
+                "line-dashed",
+                "line-dasharray",
+                dashArraySequence[step]
+              );
+              step = newStep;
+            }
+
+            // Request the next frame of the animation.
+            requestAnimationFrame(animateDashArray);
+          }
+
+          // start the animation
+          animateDashArray(0);
+          // let lineLength = turf.length({
+          //   type: "Feature",
+          //   geometry: {
+          //     type: "LineString",
+          //     coordinates: pathCoors,
+          //   },
+          // });
+          // console.log(lineLength,"公里")
+          this.$message({
+            message: `全程${
+              res.data.route.paths[0].distance / 1000
+            }公里,预计行驶${res.data.route.paths[0].duration % 60}分钟`,
+            type: "success",
+          });
+        });
+      }
+    },
+    departmentClose() {
+      this.departmentDialogVisible = false;
+    },
   },
 };
 </script>
@@ -974,6 +1211,7 @@ export default {
 <style scoped lang="scss">
 .full {
   position: relative;
+  width: 100%;
   .cancelHeat {
     position: absolute;
     top: 3vh;
@@ -989,8 +1227,14 @@ export default {
   #mapContain {
     top: 0;
     bottom: 0;
-    width: 85vw;
-    height: 85vh;
+    width: 100%;
+    height: 95vh;
+    .mapboxgl-canvas-container {
+      width: 100%;
+      .mapboxgl-canvas  {
+        width: 100% !important;
+      }
+    }
   }
 
   .bottomBar {
@@ -1017,7 +1261,7 @@ export default {
     background-color: rgba(36, 156, 183, 0.7);
     border-radius: 4px;
     top: 2vh;
-    left: 12vw;
+    left: 10vw;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -1045,7 +1289,7 @@ export default {
   background: rgba(0, 156, 255, 0.11);
   border: 1px solid rgb(78, 203, 255);
   border-radius: 4px;
-  left: 30vw;
+  left: 35vw;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1057,7 +1301,7 @@ export default {
 #pickMap {
   width: 300px;
   height: 220px;
-  // background-color: #cb1c1c;
+  // background-color: #585555;
 }
 a {
   text-decoration: none;
@@ -1075,5 +1319,21 @@ a {
   height: 35vh;
   margin-top: 7px;
   margin: 10px;
+}
+.vendorStatistics {
+  background-color: rgb(209, 215, 215);
+  width: 50%;
+  margin: auto;
+  padding: 0%;
+  span {
+    width: 100%;
+    text-align: center;
+    font-size: 25px;
+    width: 100%;
+    display: block;
+    text-align: center;
+    font-size: 25px;
+    padding: 5px 0px;
+  }
 }
 </style>

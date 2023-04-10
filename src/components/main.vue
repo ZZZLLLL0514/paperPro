@@ -1,9 +1,7 @@
 <template>
   <div>
     <el-container>
-      <el-header height="15vh"></el-header>
-      <el-container class="container">
-        <el-aside width="15vw">
+      <el-aside :width="this.$store.state.isCollapse?'64px':'200px'">
           <el-menu
             class="el-menu-vertical-demo"
             @open="handleOpen"
@@ -11,6 +9,7 @@
             background-color="#545c64"
             text-color="#fff"
             active-text-color="#ffd04b"
+            :collapse="this.$store.state.isCollapse"
           >
             <h2>功能面板</h2>
             <el-submenu
@@ -34,7 +33,10 @@
             </el-submenu>
           </el-menu>
         </el-aside>
-
+      <el-container class="container">
+        <el-header height="5vh">
+          <common-header></common-header>
+        </el-header>
         <el-main>
           <!-- <heatmap
               ref="main"
@@ -56,6 +58,7 @@
             >
             </router-view>
           </keep-alive>
+          <layer-manager v-show="this.$route.name=='map'" :prop-tree="layerTree" :checkeds="[1,2]"></layer-manager>
         </el-main>
       </el-container>
     </el-container>
@@ -66,10 +69,12 @@
 import commonAside from "./commonAside.vue";
 import heatmap from "./heatmap.vue";
 import { asideOperate } from "@/mixins/asideOperate";
+import layerManager from "./layerManager.vue";
+import commonHeader from "./commonHeader.vue";
 export default {
   // eslint-disable-next-line vue/multi-word-component-names
   name: "Main",
-  components: { commonAside, heatmap },
+  components: { commonAside, heatmap, layerManager,commonHeader },
   mixins: [asideOperate],
   provide() {
     return {
@@ -87,17 +92,12 @@ export default {
         {
           label: "数据统计",
           icon: "el-icon-date",
-          children: ["摊贩统计", "群众意见反馈"],
+          children: ["摊贩统计"],
         },
         {
           label: "数据分析",
           icon: "el-icon-data-analysis",
-          children: ["摊贩热点分析", "动态位置展示", "周边摊贩分析"],
-        },
-        {
-          label: "辅助决策",
-          icon: "el-icon-set-up",
-          children: ["最优路径规划", "重点区域管理", "管理区域选址"],
+          children: ["摊贩热点分析", "动态位置展示"],
         },
       ],
       columnList: [], //表格列
@@ -107,6 +107,16 @@ export default {
       typeList: [],
       drawerTitle: "", //抽屉标题
       isHeat: false, //记录是否在展示热力图
+      layerTree: [
+        {
+          id: 1,
+          label: "华农边界",
+        },
+        {
+          id:2,
+          label:"华农学生公寓"
+        }
+      ],
     };
   },
   methods: {
@@ -141,8 +151,8 @@ export default {
     },
     asideClick(item) {
       console.log("当前路由", this.$route);
-      if (this.$route.name == "statistics") {
-        this.$router.go(-1);
+      if (this.$route.name == "statistics"||this.$route.name==='userCenter') {
+        this.$router.push({name:"map"});
         // this.$nextTick(() => {
         setTimeout(() => {
           this.switchFun(item);
@@ -201,7 +211,7 @@ export default {
               "占道经营",
               "其他",
             ],
-            "/poi/pagequery/1"
+            "/poi_p/pagequery/1"
           );
           break;
         case "违规摊贩信息":
@@ -246,7 +256,7 @@ export default {
             "不合理定价",
             "其他",
           ];
-          this.openDrawer(title, column, typeList, "/poi/violate/pagequery/1");
+          this.openDrawer(title, column, typeList, "/poi_p/violate/pagequery/1");
           break;
         case "城管信息面板":
           this.openDrawer(
@@ -274,7 +284,7 @@ export default {
               },
             ],
             [],
-            "/poi/urban/pagequery/1"
+            "/poi_p/urban/pagequery/1"
           );
           break;
         case "部门信息面板":
@@ -288,7 +298,7 @@ export default {
               },
               {
                 width: "140",
-                label: "名称",
+                label: "部门",
                 property: "department",
               },
               {
@@ -303,7 +313,7 @@ export default {
               },
             ],
             [],
-            "/poi/departmentInfo/pagequery/1"
+            "/poi_p/departmentInfo/pagequery/1"
           );
           break;
         case "摊贩统计":
@@ -317,17 +327,18 @@ export default {
 
 <style lang="scss" scoped>
 .container {
-  height: 85vh;
+  height: 100vh;
 }
 .el-header {
-  height: 12vh;
-  background-color: rgb(235, 231, 231);
-  background-image: url(../assets/image/header.jpg);
-  background-repeat: no-repeat;
-  background-size: 100%;
+  // height: 12vh;
+  // background-color: rgb(235, 231, 231);
+  // background-image: url(../assets/image/header.jpg);
+  // background-repeat: no-repeat;
+  // background-size: 100%;
 }
 .el-aside {
-  background-color: aquamarine;
+  // background-color: aquamarine;
+  transition :width 1s;
   .el-menu {
     height: 100%;
     border: none;

@@ -5,11 +5,11 @@ import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
 Vue.use(ElementUI);
 
-import axios from 'axios'
+import {axios} from './assets/api/request'
 window.$axios = axios
 
 import * as turf from "@turf/turf";
-window.turf=turf
+window.turf = turf
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxLanguage from "@mapbox/mapbox-gl-language";
@@ -33,8 +33,14 @@ router.beforeEach((to, from, next) => {
     next({ name: 'login' });
   } else if (from.name == null && to.name == "statistics") {
     next({ name: 'map' })
-  }else{
+  } else {
     next()
+  }
+})
+Vue.directive("permission", {
+  inserted(el, bingding) {
+    let permission = sessionStorage.getItem("isSignIn");
+    permission || el.remove();
   }
 })
 Vue.config.productionTip = false

@@ -4,7 +4,7 @@ export const topBarOperate = {
             ZBdrawerVisible: false, //周边摊贩分析抽屉
             draw: null, //绘制控件
             href: "", //导出地图路径
-            features: []
+            features: []//右侧摊贩分析弹出框所需feature
         }
     },
     methods: {
@@ -29,6 +29,7 @@ export const topBarOperate = {
                     this.ZBdrawerVisible = false;
                 }
             } else {
+                this.features=[];//恢复features为空数组
                 if (this.topoperateArray[1].active) {
                     this.map.off("draw.create", this.updateDraw);
                     this.map.off("draw.delete", this.updateDraw);
@@ -136,6 +137,7 @@ export const topBarOperate = {
                     },
                 });
                 this.ZBdrawerVisible = true;
+                this.analysisResultTitle="周边摊贩分析"
                 this.$nextTick(() => {
                     this.createZBecharts();
                 });

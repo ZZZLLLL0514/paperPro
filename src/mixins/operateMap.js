@@ -78,14 +78,22 @@ export const operateMap = {
       let index = e.target.getAttribute("data-index");
       let barList = this.$refs.bottomBar.getElementsByTagName("div");
       let isCancel = false;
+      if (map.getSource("pathLine")) {
+        map.removeLayer('path-layer');
+        map.removeLayer("line-dashed");
+        map.removeSource("pathLine");
+        requestAnimationFrame(() => { });
+      }
       this.operateArray.forEach((item, actIndex) => {
         if (item.active) {
+          this.isCancel = true;
           isCancel = !isCancel;
           this.activeID = actIndex;
           switch (actIndex) {
             case 0:
               map.off("click", "icon-image", this.clickQuery)
               map.off("click", "violateIcon", this.clickQuery)
+              map.getCanvas().style.cursor = "";
               break;
             case 1:
               this.closePick();
@@ -136,7 +144,6 @@ export const operateMap = {
                 item.active = false;
               });
             }
-            console.log("查看显影状态", this.operateArray[0].active);
             if (this.operateArray[0].active === false) {
               this.isShowSelection = false;
             }
@@ -145,9 +152,6 @@ export const operateMap = {
       }
     },
     pickup() {//开始按钮拾取回调
-      //  map=map;
-      // let map = map
-      // console.log("拾取",map)
       if (this.isLenMeasure || this.isLenMeasure) {
         alert("请关闭侧面或者测距功能");
       } else {
@@ -168,29 +172,27 @@ export const operateMap = {
     pickClick(e) {//点击拾取回调
       if (this.isPick) {
         this.lnglats.push([e.lngLat.lng, e.lngLat.lat])
-        if (this.lnglats.length > 30) {
-          console.log("够了")
-          $axios({
-            method: "post",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            url: "http://127.0.01:3005/poi/test",
-            // 只有params是可以传递参数的,未在express中引入bodyParser之前
-            params: this.lnglats,
-          }).then((res) => {
-            console.log(res.data)
-          })
-        }
-        // var pt = turf.point([e.lngLat.lng, e.lngLat.lat]);
-        // console.log("转墨卡托", turf.toMercator(pt))
-        // let lng = e.lngLat.lng.toString().substring(0, 10);
-        // let lat = e.lngLat.lat.toString().substring(0, 10);
-        // let PickPopup = new mapboxgl.Popup({
-        //   closeButton: true,//是否显示右上角的取消按钮
-        //   closeOnClick: true,//点击地图不会关闭前一个popup  
-        // }).addTo(map);
-        // PickPopup.setLngLat(e.lngLat)
-        //   .setHTML(`<h4>坐标经纬度：${lng} , ${lat}</h4>`)
-        //   .setMaxWidth("350px");
+        // if (this.lnglats.length > 30) {
+        //   console.log("够了")
+        //   $axios({
+        //     method: "post",
+        //     headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        //     url: "http://127.0.01:3000/poi_p/test",
+        //     // 只有params是可以传递参数的,未在express中引入bodyParser之前
+        //     params: this.lnglats,
+        //   }).then((res) => {
+        //     console.log(res.data)
+        //   })
+        // }
+        let lng = e.lngLat.lng.toString().substring(0, 10);
+        let lat = e.lngLat.lat.toString().substring(0, 10);
+        let PickPopup = new mapboxgl.Popup({
+          closeButton: true,//是否显示右上角的取消按钮
+          closeOnClick: true,//点击地图不会关闭前一个popup  
+        }).addTo(map);
+        PickPopup.setLngLat(e.lngLat)
+          .setHTML(`<h4>坐标经纬度：${lng} , ${lat}</h4>`)
+          .setMaxWidth("350px");
         // this.PickPopups.push(PickPopup);
         // PickPopup.on("close", this.closePick);
       }
@@ -199,7 +201,6 @@ export const operateMap = {
       if (this.showEle) {
         this.showEle.remove();
       }
-      console.log("取消拾取")
       // this.tooltip.remove();
       this.tooltip = null;
       this.isPick = false;
@@ -278,7 +279,6 @@ export const operateMap = {
             coordinates: e.lngLat,
           },
         });
-        console.log("点击长度", e.lngLat)
         let geojson = this.geojson;
         const features = map.queryRenderedFeatures(e.point, {
           layers: ["measure-points"],
@@ -454,7 +454,6 @@ export const operateMap = {
       map.off("click", this.lenClick);
       map.off("dblclick", this.drawResultHandler);
       map.off("mousemove", this.drawMoveHandler);
-      this.isCancel = false
       this.isShow = false;
       this.isLenMeasure = false;
 
@@ -572,8 +571,18 @@ export const operateMap = {
         closeOnClick: true, //点击地图不会关闭前一个popup
       }).addTo(map);
       this.queryPopup.setLngLat(e.lngLat)
-        .setHTML(`<h5>摊主姓名:${e.features[0].properties.name}</h5><h5>经营类型:${e.features[0].properties.type}</h5>`)
+        .setHTML(`<h5>摊主姓名:${e.features[0].properties.name}</h5><h5>经营类型:${e.features[0].properties.type}</h5><button id="goTo">前往</button>`)
         .setMaxWidth("200px");
+      this.$nextTick(() => {
+        this.addListener()
+      })
+      this.destinationCoors = [e.lngLat.lng, e.lngLat.lat];
+    },
+    addListener() {
+      let gotoButn = document.getElementById("goTo");
+      gotoButn.addEventListener("click", () => {
+        this.departmentDialogVisible = true;
+      })
     }
   },
 
