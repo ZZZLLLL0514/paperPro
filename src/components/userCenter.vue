@@ -122,25 +122,31 @@ export default {
     };
   },
   created() {
-    let userInfo = sessionStorage.getItem("userInfo").split(",");
-    this.userInfo = [
-      { icon: "el-icon-s-custom", field: "账号", value: userInfo[0] },
-      {
-        icon: "el-icon-s-check",
-        field: "用户名",
-        value: userInfo[1],
-      },
-      {
-        icon: "el-icon-s-management",
-        field: "部门",
-        value: userInfo[2],
-      },
-      { icon: "el-icon-mobile-phone", field: "手机号", value: userInfo[3] },
-      { icon: "el-icon-message", field: "邮箱", value: userInfo[4] },
-    ];
+    this.updateInfo();
   },
   mounted() {},
+  beforeUpdate(){
+    this.updateInfo();
+  },
   methods: {
+    updateInfo() {
+      let userInfo = sessionStorage.getItem("userInfo").split(",");
+      this.userInfo = [
+        { icon: "el-icon-s-custom", field: "账号", value: userInfo[0] },
+        {
+          icon: "el-icon-s-check",
+          field: "用户名",
+          value: userInfo[1],
+        },
+        {
+          icon: "el-icon-s-management",
+          field: "部门",
+          value: userInfo[2],
+        },
+        { icon: "el-icon-mobile-phone", field: "手机号", value: userInfo[3] },
+        { icon: "el-icon-message", field: "邮箱", value: userInfo[4] },
+      ];
+    },
     userSelect(index, pathIndex) {
       if (index == "1") {
         this.basicFormVisible = true;
@@ -164,6 +170,24 @@ export default {
             params: data,
           }).then((res) => {
             console.log(res.data);
+            if (res.data.result) {
+              this.$message({
+                message: "修改成功",
+                type: "success",
+              });
+              sessionStorage.setItem(
+                "userInfo",
+                `${res.data.user[0].account},${res.data.user[0].name},${res.data.user[0].department},${res.data.user[0].phone},${res.data.user[0].mail}`
+              );
+              // this.$nextTick(() => {
+                this.updateInfo();
+              // });
+            } else {
+              this.$message({
+                message: "修改失败",
+                type: "info",
+              });
+            }
           });
         }
       });

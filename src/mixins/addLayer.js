@@ -39,6 +39,42 @@ export const addLayer = {
                 console.log("加载完毕");
                 this.addLayer().then(()=>{
                     this.map.moveLayer("华农边界", "clusters")//把华农边界图层放在下面
+                    let MinimapOptions={
+                        id: "mapboxgl-minimap",
+                        width: "320px",
+                        height: "180px",
+                        style: "mapbox://styles/mapbox/streets-v11",
+                        center: [0, 0],
+                        zoom: 6,
+                      
+                        // should be a function; will be bound to Minimap
+                        zoomAdjust: null,
+                      
+                        // if parent map zoom >= 18 and minimap zoom >= 14, set minimap zoom to 16
+                        zoomLevels: [
+                          [18, 14, 16],
+                          [16, 12, 14],
+                          [14, 10, 12],
+                          [12, 8, 10],
+                          [10, 6, 8]
+                        ],
+                      
+                        lineColor: "#08F",
+                        lineWidth: 1,
+                        lineOpacity: 1,
+                      
+                        fillColor: "#F80",
+                        fillOpacity: 0.25,
+                      
+                        dragPan: false,
+                        scrollZoom: false,
+                        boxZoom: false,
+                        dragRotate: false,
+                        keyboard: false,
+                        doubleClickZoom: false,
+                        touchZoomRotate: false
+                      }
+                    this.map.addControl(new mapboxgl.Minimap(MinimapOptions), 'bottom-left');
                 });
             });
         },
@@ -72,6 +108,12 @@ export const addLayer = {
                 });
                 $axios.get("/geoserver/scauBorder/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=scauBorder%3AStudentDormitory&maxFeatures=50&outputFormat=application%2Fjson").then((res => {
                     this.$store.commit('addStudentDormitorySource', res.data);
+                    console.log("学生公寓json",res.data)
+                    let stuCount=0;
+                    res.data.features.forEach(item=>{
+                        stuCount+= item.properties["已住人"];
+                    })
+                    this.$store.commit('addStudentCount', stuCount);
                     this.map.addSource("StudentDormitory", {
                         type: "geojson",
                         data: res.data

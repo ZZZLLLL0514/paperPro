@@ -1,7 +1,7 @@
 <template>
   <div>
     <el-container>
-      <el-aside :width="this.$store.state.isCollapse?'64px':'200px'">
+      <el-aside v-permission="'dsg'" :width="this.$store.state.isCollapse?'64px':'200px'">
           <el-menu
             class="el-menu-vertical-demo"
             @open="handleOpen"
@@ -34,7 +34,7 @@
           </el-menu>
         </el-aside>
       <el-container class="container">
-        <el-header height="5vh">
+        <el-header v-permission="'dsg'" height="5vh">
           <common-header></common-header>
         </el-header>
         <el-main>

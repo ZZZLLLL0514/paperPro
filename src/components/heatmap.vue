@@ -1,7 +1,7 @@
 <template>
   <div class="full">
     <div id="mapContain"></div>
-    <div class="bottomBar" @click="barClick" ref="bottomBar">
+    <div class="bottomBar"  @click="barClick" ref="bottomBar">
       <div v-for="(item, index) in operateArray" :key="index">
         <el-tooltip
           :content="item.title"
@@ -12,7 +12,7 @@
         </el-tooltip>
       </div>
     </div>
-    <div v-show="!isHeat" class="topBar" ref="topBar">
+    <div v-permission="'dsg'" v-show="!isHeat" class="topBar" ref="topBar">
       <div class="butnContian">
         <el-button size="small" round
           ><a :href="href" download="map.png" @click="exportMap()"
@@ -76,14 +76,12 @@
               >导出属性表</el-button
             >
             <el-button
-              v-permission="'dsg'"
               size="mini"
               @click="newAdd"
               type="primary"
               >新增</el-button
             >
             <el-button
-              v-permission="'dsg'"
               size="mini"
               @click="batchDeletion"
               type="danger"
@@ -168,14 +166,12 @@
                 >查看</el-button
               >
               <el-button
-                v-permission="'dsg'"
                 @click="editPOI(scope.row)"
                 type="text"
                 size="small"
                 >编辑</el-button
               >
               <el-button
-                v-permission="'dsg'"
                 @click="deletePOI(scope.row)"
                 size="small"
                 type="text"
@@ -204,7 +200,13 @@
       size="37%"
     >
       <div class="vendorStatistics">
-        <span>摊贩总数： {{ this.features.length }}</span>
+        <span>摊贩总数:{{ this.features.length }}</span>
+      </div>
+      <div v-if="ifBuffer" class="vendorStatistics">
+        <span>学生总数:{{ this.$store.state.studentCount }}</span>
+      </div>
+      <div v-if="ifBuffer" class="vendorStatistics">
+        <span>人数摊贩比:{{ Math.round(this.$store.state.studentCount /this.features.length)}}</span>
       </div>
       <div id="timeFB"></div>
       <div id="vendorNumber"></div>
@@ -286,10 +288,10 @@ import { addLayer } from "@/mixins/addLayer";
 import { topBarOperate } from "@/mixins/topBarOperate";
 import newEdit from "./newEdit.vue";
 import coordtransform from "coordtransform";
-import * as XLSX from "xlsx"
+import * as XLSX from "xlsx";
 export default {
   name: "Map",
-  mixins: [operateMap, addLayer, topBarOperate], 
+  mixins: [operateMap, addLayer, topBarOperate],
   components: { newEdit },
   props: {
     drawerVisible: {
@@ -322,6 +324,7 @@ export default {
         layer: "",
         distant: "",
       },
+      ifBuffer:false,//记录是否缓冲
       gridData: [],
       timeSlider: [0, 24],
       map: null, //实例地图
@@ -362,13 +365,13 @@ export default {
           name: "buff",
         },
       ],
-      analysisResultTitle:""//摊贩分析结果标题
+      analysisResultTitle: "", //摊贩分析结果标题
     };
   },
   mounted() {
     this.initMap();
     window.map = this.map;
-    document.getElementsByClassName("mapboxgl-canvas")[0].style.width='100%';//设置canvas宽度
+    document.getElementsByClassName("mapboxgl-canvas")[0].style.width = "100%"; //设置canvas宽度
   },
   methods: {
     vendorInfoClose() {
@@ -396,7 +399,7 @@ export default {
           });
           return "";
         })
-        .then( () => {
+        .then(() => {
           let data = [
             { a: 123, b: 456 },
             { a: 888, b: 999 },
@@ -944,7 +947,7 @@ export default {
     cancelHeat() {
       //取消热力图
       this.$emit("update:isHeat", false);
-      this.$store.commit("changeHeat",false);
+      this.$store.commit("changeHeat", false);
       map.setLayoutProperty("vendorPois-heat", "visibility", "none");
       map.setLayoutProperty("clusters", "visibility", "visible");
       map.setLayoutProperty("cluster-count", "visibility", "visible");
@@ -1016,7 +1019,7 @@ export default {
               }
               this.features = bufferPoi;
               this.ZBdrawerVisible = true;
-              this.analysisResultTitle='缓冲区分析'
+              this.analysisResultTitle = "缓冲区分析";
               this.$nextTick(() => {
                 this.createZBecharts();
               });
@@ -1059,10 +1062,12 @@ export default {
             }
           }
           this.bufferDialogVisible = false;
+          this.ifBuffer=true;
         }
       });
     },
-    createPath(department) {//路径图层
+    createPath(department) {
+      //路径图层
       if (this.selecDepartment) {
         this.departmentDialogVisible = false;
         this.viewPopup?.remove();
@@ -1231,7 +1236,7 @@ export default {
     height: 95vh;
     .mapboxgl-canvas-container {
       width: 100%;
-      .mapboxgl-canvas  {
+      .mapboxgl-canvas {
         width: 100% !important;
       }
     }

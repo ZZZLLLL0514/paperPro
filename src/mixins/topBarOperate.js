@@ -319,6 +319,7 @@ export const topBarOperate = {
         },
         ZBvendorClose() {
             this.ZBdrawerVisible = false;
+            this.ifBuffer=false;
         },
     }
 }
